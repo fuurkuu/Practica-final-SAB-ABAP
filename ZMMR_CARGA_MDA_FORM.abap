@@ -1046,16 +1046,33 @@ FORM get_data_9300.
            smtp_addr TYPE adr6-smtp_addr,
            flgdefault TYPE adr6-flgdefault,
          END OF ty_mail_map.
+  TYPES: BEGIN OF ty_lfa1_mail,
+           lifnr TYPE lifnr,
+           intad TYPE lfa1-intad,
+         END OF ty_lfa1_mail.
+  TYPES: BEGIN OF ty_po_mail,
+           ebeln     TYPE ebeln,
+           smtp_addr TYPE adr6-smtp_addr,
+         END OF ty_po_mail.
 
   FIELD-SYMBOLS: <fs_flow>      TYPE any,
                  <fs_mail_sent> TYPE any,
                  <fs_icon_mail> TYPE any,
                  <fs_smtp_addr> TYPE any,
-                 <fs_lifnr>     TYPE any.
+                 <fs_lifnr>     TYPE any,
+                 <fs_proveedor> TYPE any,
+                 <fs_ebeln>     TYPE any.
   DATA: lv_mail_stat TYPE c,
+        lv_smtp_assigned TYPE c,
         lv_lifnr     TYPE lifnr,
-        ls_mail_map  TYPE ty_mail_map.
+        lv_ebeln     TYPE ebeln,
+        lv_vendor_key TYPE lifnr,
+        ls_mail_map  TYPE ty_mail_map,
+        ls_lfa1_mail TYPE ty_lfa1_mail,
+        ls_po_mail   TYPE ty_po_mail.
   DATA lt_mail_map TYPE STANDARD TABLE OF ty_mail_map WITH DEFAULT KEY.
+  DATA lt_lfa1_mail TYPE STANDARD TABLE OF ty_lfa1_mail WITH DEFAULT KEY.
+  DATA lt_po_mail TYPE STANDARD TABLE OF ty_po_mail WITH DEFAULT KEY.
 
   REFRESH gt_flow.
 
@@ -1134,6 +1151,8 @@ FORM get_data_9300.
       ON li~lifnr = i~lifnr.
 
   REFRESH lt_mail_map.
+  REFRESH lt_lfa1_mail.
+  REFRESH lt_po_mail.
   IF gt_flow IS NOT INITIAL.
     SELECT
       l~lifnr,
@@ -1149,20 +1168,73 @@ FORM get_data_9300.
 
     SORT lt_mail_map BY lifnr flgdefault DESCENDING.
     DELETE ADJACENT DUPLICATES FROM lt_mail_map COMPARING lifnr.
+
+    SELECT lifnr
+           intad
+      INTO TABLE lt_lfa1_mail
+      FROM lfa1
+      FOR ALL ENTRIES IN gt_flow
+      WHERE lifnr = gt_flow-lifnr
+        AND intad <> space.
+
+    SELECT h~ebeln
+           ad~smtp_addr
+      INTO TABLE lt_po_mail
+      FROM ekko AS h
+      INNER JOIN adr6 AS ad
+        ON ad~addrnumber = h~adrnr
+      FOR ALL ENTRIES IN gt_flow
+      WHERE h~ebeln = gt_flow-ebeln
+        AND ad~smtp_addr <> space.
+
+    SORT lt_po_mail BY ebeln.
+    DELETE ADJACENT DUPLICATES FROM lt_po_mail COMPARING ebeln.
   ENDIF.
 
   LOOP AT gt_flow ASSIGNING <fs_flow>.
-    CLEAR lv_mail_stat.
+    CLEAR: lv_mail_stat, lv_smtp_assigned.
 
     ASSIGN COMPONENT 'SMTP_ADDR' OF STRUCTURE <fs_flow> TO <fs_smtp_addr>.
-    IF sy-subrc = 0 AND <fs_smtp_addr> IS INITIAL.
+    IF sy-subrc = 0.
+      lv_smtp_assigned = 'X'.
+    ENDIF.
+
+    IF lv_smtp_assigned = 'X' AND <fs_smtp_addr> IS INITIAL.
+      ASSIGN COMPONENT 'EBELN' OF STRUCTURE <fs_flow> TO <fs_ebeln>.
+      IF sy-subrc = 0 AND <fs_ebeln> IS NOT INITIAL.
+        lv_ebeln = <fs_ebeln>.
+        CLEAR ls_po_mail.
+        READ TABLE lt_po_mail INTO ls_po_mail WITH KEY ebeln = lv_ebeln.
+        IF sy-subrc = 0 AND ls_po_mail-smtp_addr IS NOT INITIAL.
+          <fs_smtp_addr> = ls_po_mail-smtp_addr.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+    IF lv_smtp_assigned = 'X' AND <fs_smtp_addr> IS INITIAL.
+      CLEAR lv_vendor_key.
       ASSIGN COMPONENT 'LIFNR' OF STRUCTURE <fs_flow> TO <fs_lifnr>.
       IF sy-subrc = 0 AND <fs_lifnr> IS NOT INITIAL.
-        lv_lifnr = <fs_lifnr>.
+        lv_vendor_key = <fs_lifnr>.
+      ELSE.
+        ASSIGN COMPONENT 'PROVEEDOR' OF STRUCTURE <fs_flow> TO <fs_proveedor>.
+        IF sy-subrc = 0 AND <fs_proveedor> IS NOT INITIAL.
+          lv_vendor_key = <fs_proveedor>.
+        ENDIF.
+      ENDIF.
+
+      IF lv_vendor_key IS NOT INITIAL.
+        lv_lifnr = lv_vendor_key.
         CLEAR ls_mail_map.
         READ TABLE lt_mail_map INTO ls_mail_map WITH KEY lifnr = lv_lifnr.
         IF sy-subrc = 0.
           <fs_smtp_addr> = ls_mail_map-smtp_addr.
+        ELSE.
+          CLEAR ls_lfa1_mail.
+          READ TABLE lt_lfa1_mail INTO ls_lfa1_mail WITH KEY lifnr = lv_lifnr.
+          IF sy-subrc = 0.
+            <fs_smtp_addr> = ls_lfa1_mail-intad.
+          ENDIF.
         ENDIF.
       ENDIF.
     ENDIF.
@@ -1614,6 +1686,8 @@ FORM send_mail_csv_9300.
     IF lv_default_mail IS INITIAL.
       IF ls_sel_flow-smtp_addr IS NOT INITIAL.
         lv_default_mail = ls_sel_flow-smtp_addr.
+      ELSEIF ls_sel_flow-ebeln IS NOT INITIAL.
+        PERFORM get_po_mail_9300 USING ls_sel_flow-ebeln CHANGING lv_default_mail.
       ELSEIF ls_sel_flow-lifnr IS NOT INITIAL.
         PERFORM get_supplier_mail_9300 USING ls_sel_flow-lifnr CHANGING lv_default_mail.
       ENDIF.
@@ -1780,6 +1854,23 @@ FORM send_mail_csv_9300.
   ENDIF.
 
   MESSAGE 'Correo enviado (revisar SOST: en desarrollo puede quedar en espera)' TYPE 'S'.
+ENDFORM.
+
+FORM get_po_mail_9300 USING iv_ebeln TYPE ebeln
+                      CHANGING cv_mail TYPE adr6-smtp_addr.
+  CLEAR cv_mail.
+
+  IF iv_ebeln IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE ad~smtp_addr
+    INTO cv_mail
+    FROM ekko AS h
+    INNER JOIN adr6 AS ad
+      ON ad~addrnumber = h~adrnr
+    WHERE h~ebeln = iv_ebeln
+      AND ad~smtp_addr <> space.
 ENDFORM.
 
 FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
