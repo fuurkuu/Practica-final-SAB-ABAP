@@ -3,8 +3,6 @@
 *&---------------------------------------------------------------------*
 TYPE-POOLS: icon, lvc.
 
-" Necesario para poder declarar una referencia global a la clase
-" antes de su definicion/implementacion en el include CLASS.
 CLASS lcl_evt_9300 DEFINITION DEFERRED.
 
 TYPES: ty_raw_line TYPE c LENGTH 1024.
@@ -84,13 +82,13 @@ DATA: gv_9300_need_popup TYPE c VALUE 'X',
 DATA go_evt_9300 TYPE REF TO lcl_evt_9300.
 
 TYPES: BEGIN OF ty_bank_popup,
-         lifnr TYPE lifnr,
-         ekorg TYPE ekorg,
-         zterm TYPE dzterm,
-         inco1 TYPE inco1,
-         banco TYPE bnka-banka,
-         banks TYPE banks,
-         bankn TYPE bankn,
+         lifnr    TYPE lifnr,
+         ekorg    TYPE ekorg,
+         zterm    TYPE dzterm,
+         inco1    TYPE inco1,
+         banco    TYPE bnka-banka,
+         banks    TYPE banks,
+         bankn    TYPE bankn,
        END OF ty_bank_popup.
 
 DATA gt_bank_popup TYPE STANDARD TABLE OF ty_bank_popup WITH DEFAULT KEY.
