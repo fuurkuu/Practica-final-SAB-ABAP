@@ -3,6 +3,7 @@
 *&---------------------------------------------------------------------*
 TYPE-POOLS: icon, lvc.
 
+CLASS lcl_evt_9200 DEFINITION DEFERRED.
 CLASS lcl_evt_9300 DEFINITION DEFERRED.
 
 TYPES: ty_raw_line TYPE c LENGTH 1024.
@@ -64,6 +65,7 @@ DATA: go_cont_9200 TYPE REF TO cl_gui_custom_container,
       gt_fcat_9200 TYPE lvc_t_fcat,
       gs_layo_9200 TYPE lvc_s_layo,
       gv_alv_9200  TYPE c LENGTH 1.
+DATA go_evt_9200 TYPE REF TO lcl_evt_9200.
 
 DATA: gt_flow TYPE STANDARD TABLE OF zemm_flujo_mda WITH DEFAULT KEY,
       gs_flow TYPE zemm_flujo_mda.
