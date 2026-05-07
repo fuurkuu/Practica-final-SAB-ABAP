@@ -1041,6 +1041,11 @@ FORM nav_mm03_purch USING iv_matnr TYPE matnr.
 ENDFORM.
 
 FORM get_data_9300.
+  FIELD-SYMBOLS: <fs_flow>      TYPE any,
+                 <fs_mail_sent> TYPE any,
+                 <fs_icon_mail> TYPE any.
+  DATA lv_mail_stat TYPE c.
+
   REFRESH gt_flow.
 
   SELECT
@@ -1116,6 +1121,36 @@ FORM get_data_9300.
      AND e~ekorg = h~ekorg
     LEFT JOIN lfa1 AS li
       ON li~lifnr = i~lifnr.
+
+  LOOP AT gt_flow ASSIGNING <fs_flow>.
+    CLEAR lv_mail_stat.
+
+    ASSIGN COMPONENT 'MAIL_ENVIADO' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+    IF sy-subrc = 0.
+      lv_mail_stat = <fs_mail_sent>.
+    ENDIF.
+    IF sy-subrc <> 0.
+      ASSIGN COMPONENT 'ENVIADO_MAIL' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+      IF sy-subrc = 0.
+        lv_mail_stat = <fs_mail_sent>.
+      ENDIF.
+    ENDIF.
+    IF sy-subrc <> 0.
+      ASSIGN COMPONENT 'MAIL_SENT' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+      IF sy-subrc = 0.
+        lv_mail_stat = <fs_mail_sent>.
+      ENDIF.
+    ENDIF.
+
+    ASSIGN COMPONENT 'ICON_MAIL' OF STRUCTURE <fs_flow> TO <fs_icon_mail>.
+    IF sy-subrc = 0.
+      IF lv_mail_stat = 'X'.
+        <fs_icon_mail> = icon_led_green.
+      ELSE.
+        <fs_icon_mail> = icon_led_red.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
 ENDFORM.
 
 FORM alv_9300_init.
@@ -1355,6 +1390,10 @@ FORM build_fcat_9300.
         <fs_fcat>-emphasize = 'C510'.
       WHEN 'ICON_INFO'.
         <fs_fcat>-icon = 'X'.
+      WHEN 'ICON_MAIL'.
+        <fs_fcat>-icon      = 'X'.
+        <fs_fcat>-coltext   = 'Mail'.
+        <fs_fcat>-scrtext_l = 'Mail'.
     ENDCASE.
   ENDLOOP.
 ENDFORM.
@@ -1463,4 +1502,413 @@ FORM show_bank_popup_9300.
     CATCH cx_salv_msg.
       MESSAGE 'Error mostrando popup de datos bancarios' TYPE 'S' DISPLAY LIKE 'E'.
   ENDTRY.
+ENDFORM.
+
+FORM send_mail_csv_9300.
+  DATA: lt_rows          TYPE lvc_t_row,
+        ls_row           TYPE lvc_s_row,
+        ls_sel_flow      TYPE zemm_flujo_mda,
+        ls_csv_flow      TYPE zemm_flujo_mda,
+        lt_orders        TYPE SORTED TABLE OF ebeln WITH UNIQUE KEY table_line,
+        lv_ebeln         TYPE ebeln,
+        lv_lifnr         TYPE lifnr,
+        lv_default_mail  TYPE adr6-smtp_addr,
+        lv_mail_flag     TYPE c LENGTH 30,
+        lv_mail_sent     TYPE c,
+        lv_cancel        TYPE c,
+        lv_orders_txt    TYPE string,
+        lv_csv_line      TYPE string,
+        lv_csv_full      TYPE string,
+        lv_qty_txt       TYPE c LENGTH 30,
+        lv_fecha_txt     TYPE c LENGTH 20,
+        lv_body_line     TYPE soli,
+        lv_subject       TYPE so_obj_des VALUE 'Pedido de compra creado',
+        lv_sent_to_all   TYPE c LENGTH 1,
+        lv_log_msg       TYPE string,
+        lv_id_carga_log  TYPE ztmm_cargas_mda-id_carga.
+
+  DATA: lt_receivers     TYPE tt_mail_recipients,
+        ls_receiver      TYPE adr6-smtp_addr,
+        lt_csv_lines     TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+        lt_message_body  TYPE bcsy_text,
+        lt_csv_hex       TYPE solix_tab,
+        lv_csv_xstring   TYPE xstring.
+
+  DATA: lo_send_request  TYPE REF TO cl_bcs,
+        lo_document      TYPE REF TO cl_document_bcs,
+        lo_sender        TYPE REF TO if_sender_bcs,
+        lo_recipient     TYPE REF TO if_recipient_bcs.
+
+  IF go_grid_9300 IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  CALL METHOD go_grid_9300->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_rows.
+
+  IF lt_rows IS INITIAL.
+    MESSAGE 'Selecciona al menos una fila para enviar mail' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CLEAR: lv_lifnr, lv_default_mail, lv_id_carga_log.
+  REFRESH lt_orders.
+
+  LOOP AT lt_rows INTO ls_row.
+    READ TABLE gt_flow INTO ls_sel_flow INDEX ls_row-index.
+    IF sy-subrc <> 0 OR ls_sel_flow-ebeln IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF lv_lifnr IS INITIAL.
+      lv_lifnr = ls_sel_flow-lifnr.
+    ELSEIF lv_lifnr <> ls_sel_flow-lifnr.
+      MESSAGE 'Solo se pueden enviar pedidos del mismo proveedor' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    IF lv_default_mail IS INITIAL AND ls_sel_flow-smtp_addr IS NOT INITIAL.
+      lv_default_mail = ls_sel_flow-smtp_addr.
+    ENDIF.
+
+    IF lv_id_carga_log IS INITIAL.
+      lv_id_carga_log = ls_sel_flow-id_carga.
+    ENDIF.
+
+    INSERT ls_sel_flow-ebeln INTO TABLE lt_orders.
+  ENDLOOP.
+
+  IF lt_orders IS INITIAL.
+    MESSAGE 'No hay pedidos válidos en la selección' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM get_mail_flag_component_9300 CHANGING lv_mail_flag.
+  IF lv_mail_flag IS INITIAL.
+    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL en ZTMM_CARGAS_MDA' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_orders INTO lv_ebeln.
+    CLEAR lv_mail_sent.
+    PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_sent.
+    IF lv_mail_sent = 'X'.
+      CONCATENATE 'El pedido' lv_ebeln 'ya fue enviado por correo' INTO lv_log_msg SEPARATED BY space.
+      MESSAGE lv_log_msg TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ENDLOOP.
+
+  PERFORM popup_mail_receivers_9300 USING lv_default_mail CHANGING lt_receivers lv_cancel.
+  IF lv_cancel = 'X' OR lt_receivers IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  REFRESH lt_csv_lines.
+  APPEND 'Proveedor;Número de pedido;Posición;Material;Cantidad;Fichero cargado;Fecha de carga' TO lt_csv_lines.
+
+  CLEAR lv_orders_txt.
+  LOOP AT lt_orders INTO lv_ebeln.
+    IF lv_orders_txt IS INITIAL.
+      lv_orders_txt = lv_ebeln.
+    ELSE.
+      CONCATENATE lv_orders_txt lv_ebeln INTO lv_orders_txt SEPARATED BY ', '.
+    ENDIF.
+
+    LOOP AT gt_flow INTO ls_csv_flow WHERE ebeln = lv_ebeln.
+      CLEAR: lv_qty_txt, lv_fecha_txt, lv_csv_line.
+      WRITE ls_csv_flow-menge TO lv_qty_txt.
+      CONDENSE lv_qty_txt.
+      WRITE ls_csv_flow-fecha_carga TO lv_fecha_txt.
+
+      CONCATENATE ls_csv_flow-lifnr
+                  ls_csv_flow-ebeln
+                  ls_csv_flow-ebelp
+                  ls_csv_flow-matnr
+                  lv_qty_txt
+                  ls_csv_flow-nombre_fich
+                  lv_fecha_txt
+        INTO lv_csv_line SEPARATED BY ';'.
+      APPEND lv_csv_line TO lt_csv_lines.
+    ENDLOOP.
+  ENDLOOP.
+
+  CLEAR lv_csv_full.
+  LOOP AT lt_csv_lines INTO lv_csv_line.
+    IF lv_csv_full IS INITIAL.
+      lv_csv_full = lv_csv_line.
+    ELSE.
+      CONCATENATE lv_csv_full cl_abap_char_utilities=>cr_lf lv_csv_line INTO lv_csv_full.
+    ENDIF.
+  ENDLOOP.
+
+  CALL FUNCTION 'SCMS_STRING_TO_XSTRING'
+    EXPORTING
+      text   = lv_csv_full
+    IMPORTING
+      buffer = lv_csv_xstring
+    EXCEPTIONS
+      OTHERS = 1.
+  IF sy-subrc <> 0.
+    MESSAGE 'No se pudo convertir el CSV para adjuntar' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+    EXPORTING
+      buffer     = lv_csv_xstring
+    TABLES
+      binary_tab = lt_csv_hex
+    EXCEPTIONS
+      OTHERS     = 1.
+  IF sy-subrc <> 0.
+    MESSAGE 'No se pudo preparar adjunto CSV' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  REFRESH lt_message_body.
+  APPEND 'Estimado proveedor,' TO lt_message_body.
+  APPEND space TO lt_message_body.
+  CLEAR lv_body_line.
+  CONCATENATE 'Por el presente correo se le informa de los pedidos' lv_orders_txt
+    'con los datos adjuntos en el mail.' INTO lv_body_line SEPARATED BY space.
+  APPEND lv_body_line TO lt_message_body.
+  APPEND space TO lt_message_body.
+  APPEND 'Reciba un cordial saludo.' TO lt_message_body.
+
+  TRY.
+      lo_send_request = cl_bcs=>create_persistent( ).
+      lo_document = cl_document_bcs=>create_document(
+                      i_type    = 'RAW'
+                      i_text    = lt_message_body
+                      i_subject = lv_subject ).
+
+      lo_document->add_attachment(
+        EXPORTING
+          i_attachment_type    = 'CSV'
+          i_attachment_subject = 'Listado_ALV_9300'
+          i_att_content_hex    = lt_csv_hex ).
+
+      lo_send_request->set_document( lo_document ).
+
+      lo_sender = cl_sapuser_bcs=>create( sy-uname ).
+      lo_send_request->set_sender( lo_sender ).
+
+      LOOP AT lt_receivers INTO ls_receiver.
+        lo_recipient = cl_cam_address_bcs=>create_internet_address( ls_receiver ).
+        lo_send_request->add_recipient(
+          EXPORTING
+            i_recipient = lo_recipient
+            i_express   = 'X' ).
+      ENDLOOP.
+
+      lo_send_request->send(
+        EXPORTING
+          i_with_error_screen = 'X'
+        RECEIVING
+          result              = lv_sent_to_all ).
+    CATCH cx_document_bcs.
+      MESSAGE 'Error creando documento de correo' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    CATCH cx_bcs.
+      MESSAGE 'Error técnico enviando correo' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+  ENDTRY.
+
+  COMMIT WORK.
+
+  LOOP AT lt_orders INTO lv_ebeln.
+    PERFORM mark_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag.
+  ENDLOOP.
+  COMMIT WORK.
+
+  CLEAR lv_log_msg.
+  CONCATENATE 'Correo generado para pedidos:' lv_orders_txt INTO lv_log_msg SEPARATED BY space.
+  PERFORM add_log USING lv_id_carga_log space 'S' lv_log_msg.
+
+  IF go_grid_9300 IS BOUND.
+    PERFORM get_data_9300.
+    CALL METHOD go_grid_9300->refresh_table_display.
+  ENDIF.
+
+  MESSAGE 'Correo enviado (revisar SOST: en desarrollo puede quedar en espera)' TYPE 'S'.
+ENDFORM.
+
+FORM popup_mail_receivers_9300 USING iv_default_mail TYPE adr6-smtp_addr
+                               CHANGING ct_receivers TYPE tt_mail_recipients
+                                        cv_cancel TYPE c.
+  DATA: lt_fields TYPE TABLE OF sval,
+        ls_field  TYPE sval,
+        lv_mail   TYPE adr6-smtp_addr.
+
+  cv_cancel = space.
+  REFRESH ct_receivers.
+  REFRESH lt_fields.
+
+  CLEAR ls_field.
+  ls_field-tabname   = 'ADR6'.
+  ls_field-fieldname = 'SMTP_ADDR'.
+  ls_field-value     = iv_default_mail.
+  APPEND ls_field TO lt_fields.
+
+  CLEAR ls_field.
+  ls_field-tabname   = 'ADR6'.
+  ls_field-fieldname = 'SMTP_ADDR'.
+  APPEND ls_field TO lt_fields.
+
+  CLEAR ls_field.
+  ls_field-tabname   = 'ADR6'.
+  ls_field-fieldname = 'SMTP_ADDR'.
+  APPEND ls_field TO lt_fields.
+
+  CLEAR ls_field.
+  ls_field-tabname   = 'ADR6'.
+  ls_field-fieldname = 'SMTP_ADDR'.
+  APPEND ls_field TO lt_fields.
+
+  CLEAR ls_field.
+  ls_field-tabname   = 'ADR6'.
+  ls_field-fieldname = 'SMTP_ADDR'.
+  APPEND ls_field TO lt_fields.
+
+  CALL FUNCTION 'POPUP_GET_VALUES'
+    EXPORTING
+      popup_title = 'Destinatarios correo (añadir/quitar emails)'
+    TABLES
+      fields      = lt_fields
+    EXCEPTIONS
+      OTHERS      = 1.
+  IF sy-subrc <> 0.
+    cv_cancel = 'X'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_fields INTO ls_field.
+    lv_mail = ls_field-value.
+    PERFORM append_mail_tokens_9300 USING lv_mail CHANGING ct_receivers.
+  ENDLOOP.
+
+  SORT ct_receivers.
+  DELETE ADJACENT DUPLICATES FROM ct_receivers.
+
+  IF ct_receivers IS INITIAL.
+    MESSAGE 'Debes indicar al menos un email válido' TYPE 'S' DISPLAY LIKE 'E'.
+    cv_cancel = 'X'.
+  ENDIF.
+ENDFORM.
+
+FORM append_mail_tokens_9300 USING iv_mail_text TYPE adr6-smtp_addr
+                             CHANGING ct_receivers TYPE tt_mail_recipients.
+  DATA: lv_text      TYPE string,
+        lv_token     TYPE string,
+        lt_tokens    TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+        lv_mail      TYPE adr6-smtp_addr,
+        lv_valid     TYPE c.
+
+  IF iv_mail_text IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_text = iv_mail_text.
+  REPLACE ALL OCCURRENCES OF ',' IN lv_text WITH ';'.
+  SPLIT lv_text AT ';' INTO TABLE lt_tokens.
+
+  LOOP AT lt_tokens INTO lv_token.
+    lv_mail = lv_token.
+    CONDENSE lv_mail NO-GAPS.
+    IF lv_mail IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    CLEAR lv_valid.
+    PERFORM is_valid_mail_9300 USING lv_mail CHANGING lv_valid.
+    IF lv_valid = 'X'.
+      APPEND lv_mail TO ct_receivers.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+
+FORM is_valid_mail_9300 USING iv_mail TYPE adr6-smtp_addr
+                        CHANGING cv_valid TYPE c.
+  cv_valid = space.
+  IF iv_mail CS '@' AND iv_mail CS '.'.
+    cv_valid = 'X'.
+  ENDIF.
+ENDFORM.
+
+FORM get_mail_flag_component_9300 CHANGING cv_component TYPE ty_fieldname30.
+  DATA ls_carga TYPE ztmm_cargas_mda.
+  FIELD-SYMBOLS <fs_mail> TYPE any.
+
+  CLEAR cv_component.
+
+  SELECT SINGLE * INTO ls_carga
+    FROM ztmm_cargas_mda
+    WHERE ebeln <> space.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  ASSIGN COMPONENT 'MAIL_ENVIADO' OF STRUCTURE ls_carga TO <fs_mail>.
+  IF sy-subrc = 0.
+    cv_component = 'MAIL_ENVIADO'.
+    RETURN.
+  ENDIF.
+
+  ASSIGN COMPONENT 'ENVIADO_MAIL' OF STRUCTURE ls_carga TO <fs_mail>.
+  IF sy-subrc = 0.
+    cv_component = 'ENVIADO_MAIL'.
+    RETURN.
+  ENDIF.
+
+  ASSIGN COMPONENT 'MAIL_SENT' OF STRUCTURE ls_carga TO <fs_mail>.
+  IF sy-subrc = 0.
+    cv_component = 'MAIL_SENT'.
+  ENDIF.
+ENDFORM.
+
+FORM is_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
+                                       iv_mail_component TYPE ty_fieldname30
+                                 CHANGING cv_sent TYPE c.
+  DATA: lt_cargas TYPE STANDARD TABLE OF ztmm_cargas_mda WITH DEFAULT KEY,
+        ls_carga  TYPE ztmm_cargas_mda.
+  FIELD-SYMBOLS <fs_mail> TYPE any.
+
+  cv_sent = space.
+  REFRESH lt_cargas.
+
+  SELECT *
+    INTO TABLE lt_cargas
+    FROM ztmm_cargas_mda
+    WHERE ebeln = iv_ebeln.
+
+  LOOP AT lt_cargas INTO ls_carga.
+    ASSIGN COMPONENT iv_mail_component OF STRUCTURE ls_carga TO <fs_mail>.
+    IF sy-subrc = 0 AND <fs_mail> = 'X'.
+      cv_sent = 'X'.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+
+FORM mark_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
+                                         iv_mail_component TYPE ty_fieldname30.
+  DATA: lt_cargas TYPE STANDARD TABLE OF ztmm_cargas_mda WITH DEFAULT KEY,
+        ls_carga  TYPE ztmm_cargas_mda.
+  FIELD-SYMBOLS <fs_mail> TYPE any.
+
+  REFRESH lt_cargas.
+  SELECT *
+    INTO TABLE lt_cargas
+    FROM ztmm_cargas_mda
+    WHERE ebeln = iv_ebeln.
+
+  LOOP AT lt_cargas INTO ls_carga.
+    ASSIGN COMPONENT iv_mail_component OF STRUCTURE ls_carga TO <fs_mail>.
+    IF sy-subrc = 0.
+      <fs_mail> = 'X'.
+      MODIFY ztmm_cargas_mda FROM ls_carga.
+    ENDIF.
+  ENDLOOP.
 ENDFORM.

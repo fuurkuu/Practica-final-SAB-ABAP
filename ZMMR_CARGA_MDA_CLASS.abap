@@ -179,6 +179,14 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
     ls_btn-text      = 'Imprimir formulario'.
     ls_btn-disabled  = space.
     APPEND ls_btn TO e_object->mt_toolbar.
+
+    CLEAR ls_btn.
+    ls_btn-function  = 'ZMAIL'.
+    ls_btn-icon      = icon_display.
+    ls_btn-quickinfo = 'Enviar email con CSV'.
+    ls_btn-text      = 'Enviar email CSV'.
+    ls_btn-disabled  = space.
+    APPEND ls_btn TO e_object->mt_toolbar.
   ENDMETHOD.
 
   METHOD handle_user_command.
@@ -189,6 +197,8 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
         PERFORM print_form_9300 USING 'V'.
       WHEN 'ZFORMP'.
         PERFORM print_form_9300 USING 'P'.
+      WHEN 'ZMAIL'.
+        PERFORM send_mail_csv_9300.
     ENDCASE.
   ENDMETHOD.
 

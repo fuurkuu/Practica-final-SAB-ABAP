@@ -7,6 +7,8 @@ CLASS lcl_evt_9200 DEFINITION DEFERRED.
 CLASS lcl_evt_9300 DEFINITION DEFERRED.
 
 TYPES: ty_raw_line TYPE c LENGTH 1024.
+TYPES ty_fieldname30 TYPE c LENGTH 30.
+TYPES tt_mail_recipients TYPE STANDARD TABLE OF adr6-smtp_addr WITH DEFAULT KEY.
 
 CONSTANTS: gc_obj_carga TYPE inri-object    VALUE 'ZMMCAR_MDA',
            gc_obj_linea TYPE inri-object    VALUE 'ZMMLIN_MDA',
