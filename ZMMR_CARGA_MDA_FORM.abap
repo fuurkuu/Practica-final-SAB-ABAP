@@ -1041,10 +1041,21 @@ FORM nav_mm03_purch USING iv_matnr TYPE matnr.
 ENDFORM.
 
 FORM get_data_9300.
+  TYPES: BEGIN OF ty_mail_cache,
+           lifnr     TYPE lifnr,
+           smtp_addr TYPE adr6-smtp_addr,
+         END OF ty_mail_cache.
+
   FIELD-SYMBOLS: <fs_flow>      TYPE any,
                  <fs_mail_sent> TYPE any,
-                 <fs_icon_mail> TYPE any.
-  DATA lv_mail_stat TYPE c.
+                 <fs_icon_mail> TYPE any,
+                 <fs_smtp_addr> TYPE any,
+                 <fs_lifnr>     TYPE any.
+  DATA: lv_mail_stat     TYPE c,
+        lv_fallback_mail TYPE adr6-smtp_addr,
+        lv_lifnr_cache   TYPE lifnr,
+        ls_mail_cache    TYPE ty_mail_cache.
+  DATA lt_mail_cache TYPE STANDARD TABLE OF ty_mail_cache WITH DEFAULT KEY.
 
   REFRESH gt_flow.
 
@@ -1124,6 +1135,37 @@ FORM get_data_9300.
 
   LOOP AT gt_flow ASSIGNING <fs_flow>.
     CLEAR lv_mail_stat.
+
+    ASSIGN COMPONENT 'SMTP_ADDR' OF STRUCTURE <fs_flow> TO <fs_smtp_addr>.
+    IF sy-subrc = 0 AND <fs_smtp_addr> IS INITIAL.
+      ASSIGN COMPONENT 'LIFNR' OF STRUCTURE <fs_flow> TO <fs_lifnr>.
+      IF sy-subrc = 0 AND <fs_lifnr> IS NOT INITIAL.
+        lv_lifnr_cache = <fs_lifnr>.
+        CLEAR ls_mail_cache.
+        READ TABLE lt_mail_cache INTO ls_mail_cache WITH KEY lifnr = lv_lifnr_cache.
+        IF sy-subrc = 0.
+          <fs_smtp_addr> = ls_mail_cache-smtp_addr.
+        ELSE.
+          CLEAR lv_fallback_mail.
+          SELECT SINGLE ad~smtp_addr
+            INTO lv_fallback_mail
+            FROM lfa1 AS l
+            INNER JOIN adr6 AS ad
+              ON ad~addrnumber = l~adrnr
+            WHERE l~lifnr = lv_lifnr_cache
+              AND ad~smtp_addr <> space.
+
+          CLEAR ls_mail_cache.
+          ls_mail_cache-lifnr = lv_lifnr_cache.
+          ls_mail_cache-smtp_addr = lv_fallback_mail.
+          APPEND ls_mail_cache TO lt_mail_cache.
+
+          IF lv_fallback_mail IS NOT INITIAL.
+            <fs_smtp_addr> = lv_fallback_mail.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDIF.
 
     ASSIGN COMPONENT 'MAIL_ENVIADO' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
     IF sy-subrc = 0.
