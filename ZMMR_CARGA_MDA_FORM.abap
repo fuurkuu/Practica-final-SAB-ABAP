@@ -1041,21 +1041,21 @@ FORM nav_mm03_purch USING iv_matnr TYPE matnr.
 ENDFORM.
 
 FORM get_data_9300.
-  TYPES: BEGIN OF ty_mail_cache,
+  TYPES: BEGIN OF ty_mail_map,
            lifnr     TYPE lifnr,
            smtp_addr TYPE adr6-smtp_addr,
-         END OF ty_mail_cache.
+           flgdefault TYPE adr6-flgdefault,
+         END OF ty_mail_map.
 
   FIELD-SYMBOLS: <fs_flow>      TYPE any,
                  <fs_mail_sent> TYPE any,
                  <fs_icon_mail> TYPE any,
                  <fs_smtp_addr> TYPE any,
                  <fs_lifnr>     TYPE any.
-  DATA: lv_mail_stat     TYPE c,
-        lv_fallback_mail TYPE adr6-smtp_addr,
-        lv_lifnr_cache   TYPE lifnr,
-        ls_mail_cache    TYPE ty_mail_cache.
-  DATA lt_mail_cache TYPE STANDARD TABLE OF ty_mail_cache WITH DEFAULT KEY.
+  DATA: lv_mail_stat TYPE c,
+        lv_lifnr     TYPE lifnr,
+        ls_mail_map  TYPE ty_mail_map.
+  DATA lt_mail_map TYPE STANDARD TABLE OF ty_mail_map WITH DEFAULT KEY.
 
   REFRESH gt_flow.
 
@@ -1133,6 +1133,24 @@ FORM get_data_9300.
     LEFT JOIN lfa1 AS li
       ON li~lifnr = i~lifnr.
 
+  REFRESH lt_mail_map.
+  IF gt_flow IS NOT INITIAL.
+    SELECT
+      l~lifnr,
+      ad~smtp_addr,
+      ad~flgdefault
+      INTO TABLE lt_mail_map
+      FROM lfa1 AS l
+      INNER JOIN adr6 AS ad
+        ON ad~addrnumber = l~adrnr
+      FOR ALL ENTRIES IN gt_flow
+      WHERE l~lifnr = gt_flow-lifnr
+        AND ad~smtp_addr <> space.
+
+    SORT lt_mail_map BY lifnr flgdefault DESCENDING.
+    DELETE ADJACENT DUPLICATES FROM lt_mail_map COMPARING lifnr.
+  ENDIF.
+
   LOOP AT gt_flow ASSIGNING <fs_flow>.
     CLEAR lv_mail_stat.
 
@@ -1140,29 +1158,11 @@ FORM get_data_9300.
     IF sy-subrc = 0 AND <fs_smtp_addr> IS INITIAL.
       ASSIGN COMPONENT 'LIFNR' OF STRUCTURE <fs_flow> TO <fs_lifnr>.
       IF sy-subrc = 0 AND <fs_lifnr> IS NOT INITIAL.
-        lv_lifnr_cache = <fs_lifnr>.
-        CLEAR ls_mail_cache.
-        READ TABLE lt_mail_cache INTO ls_mail_cache WITH KEY lifnr = lv_lifnr_cache.
+        lv_lifnr = <fs_lifnr>.
+        CLEAR ls_mail_map.
+        READ TABLE lt_mail_map INTO ls_mail_map WITH KEY lifnr = lv_lifnr.
         IF sy-subrc = 0.
-          <fs_smtp_addr> = ls_mail_cache-smtp_addr.
-        ELSE.
-          CLEAR lv_fallback_mail.
-          SELECT SINGLE ad~smtp_addr
-            INTO lv_fallback_mail
-            FROM lfa1 AS l
-            INNER JOIN adr6 AS ad
-              ON ad~addrnumber = l~adrnr
-            WHERE l~lifnr = lv_lifnr_cache
-              AND ad~smtp_addr <> space.
-
-          CLEAR ls_mail_cache.
-          ls_mail_cache-lifnr = lv_lifnr_cache.
-          ls_mail_cache-smtp_addr = lv_fallback_mail.
-          APPEND ls_mail_cache TO lt_mail_cache.
-
-          IF lv_fallback_mail IS NOT INITIAL.
-            <fs_smtp_addr> = lv_fallback_mail.
-          ENDIF.
+          <fs_smtp_addr> = ls_mail_map-smtp_addr.
         ENDIF.
       ENDIF.
     ENDIF.
@@ -1611,8 +1611,12 @@ FORM send_mail_csv_9300.
       RETURN.
     ENDIF.
 
-    IF lv_default_mail IS INITIAL AND ls_sel_flow-smtp_addr IS NOT INITIAL.
-      lv_default_mail = ls_sel_flow-smtp_addr.
+    IF lv_default_mail IS INITIAL.
+      IF ls_sel_flow-smtp_addr IS NOT INITIAL.
+        lv_default_mail = ls_sel_flow-smtp_addr.
+      ELSEIF ls_sel_flow-lifnr IS NOT INITIAL.
+        PERFORM get_supplier_mail_9300 USING ls_sel_flow-lifnr CHANGING lv_default_mail.
+      ENDIF.
     ENDIF.
 
     IF lv_id_carga_log IS INITIAL.
@@ -1776,6 +1780,34 @@ FORM send_mail_csv_9300.
   ENDIF.
 
   MESSAGE 'Correo enviado (revisar SOST: en desarrollo puede quedar en espera)' TYPE 'S'.
+ENDFORM.
+
+FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
+                            CHANGING cv_mail TYPE adr6-smtp_addr.
+  CLEAR cv_mail.
+
+  IF iv_lifnr IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE ad~smtp_addr
+    INTO cv_mail
+    FROM lfa1 AS l
+    INNER JOIN adr6 AS ad
+      ON ad~addrnumber = l~adrnr
+    WHERE l~lifnr = iv_lifnr
+      AND ad~flgdefault = 'X'
+      AND ad~smtp_addr <> space.
+
+  IF sy-subrc <> 0 OR cv_mail IS INITIAL.
+    SELECT SINGLE ad~smtp_addr
+      INTO cv_mail
+      FROM lfa1 AS l
+      INNER JOIN adr6 AS ad
+        ON ad~addrnumber = l~adrnr
+      WHERE l~lifnr = iv_lifnr
+        AND ad~smtp_addr <> space.
+  ENDIF.
 ENDFORM.
 
 FORM popup_mail_receivers_9300 USING iv_default_mail TYPE adr6-smtp_addr
