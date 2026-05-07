@@ -1525,7 +1525,8 @@ FORM send_mail_csv_9300.
         lv_subject       TYPE so_obj_des VALUE 'Pedido de compra creado',
         lv_sent_to_all   TYPE c LENGTH 1,
         lv_log_msg       TYPE string,
-        lv_id_carga_log  TYPE ztmm_cargas_mda-id_carga.
+        lv_id_carga_log  TYPE ztmm_cargas_mda-id_carga,
+        lv_id_linea_log  TYPE ztmm_log_mda-id_linea.
 
   DATA: lt_receivers     TYPE tt_mail_recipients,
         ls_receiver      TYPE adr6-smtp_addr,
@@ -1552,7 +1553,7 @@ FORM send_mail_csv_9300.
     RETURN.
   ENDIF.
 
-  CLEAR: lv_lifnr, lv_default_mail, lv_id_carga_log.
+  CLEAR: lv_lifnr, lv_default_mail, lv_id_carga_log, lv_id_linea_log.
   REFRESH lt_orders.
 
   LOOP AT lt_rows INTO ls_row.
@@ -1725,7 +1726,7 @@ FORM send_mail_csv_9300.
 
   CLEAR lv_log_msg.
   CONCATENATE 'Correo generado para pedidos:' lv_orders_txt INTO lv_log_msg SEPARATED BY space.
-  PERFORM add_log USING lv_id_carga_log space 'S' lv_log_msg.
+  PERFORM add_log USING lv_id_carga_log lv_id_linea_log 'S' lv_log_msg.
 
   IF go_grid_9300 IS BOUND.
     PERFORM get_data_9300.
