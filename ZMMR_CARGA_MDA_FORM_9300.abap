@@ -233,8 +233,6 @@ FORM alv_9300_init.
         i_parent = go_cont_9300.
 
     CREATE OBJECT go_evt_9300.
-    SET HANDLER go_evt_9300->handle_double_click FOR go_grid_9300.
-    SET HANDLER go_evt_9300->handle_hotspot_click FOR go_grid_9300.
     SET HANDLER go_evt_9300->handle_toolbar      FOR go_grid_9300.
     SET HANDLER go_evt_9300->handle_user_command FOR go_grid_9300.
 
@@ -451,10 +449,8 @@ FORM build_fcat_9300.
   LOOP AT gt_fcat_9300 ASSIGNING FIELD-SYMBOL(<fs_fcat>).
     CASE <fs_fcat>-fieldname.
       WHEN 'EBELN'.
-        <fs_fcat>-hotspot   = 'X'.
         <fs_fcat>-emphasize = 'C510'.
       WHEN 'MATNR'.
-        <fs_fcat>-hotspot   = 'X'.
         <fs_fcat>-emphasize = 'C510'.
       WHEN 'ICON_INFO'.
         <fs_fcat>-icon = 'X'.
@@ -464,6 +460,41 @@ FORM build_fcat_9300.
         <fs_fcat>-scrtext_l = 'Mail'.
     ENDCASE.
   ENDLOOP.
+ENDFORM.
+
+FORM handle_ic1_9300.
+  DATA: ls_row_id TYPE lvc_s_row,
+        ls_col_id TYPE lvc_s_col,
+        ls_flow   TYPE zemm_flujo_mda.
+
+  IF go_grid_9300 IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  CALL METHOD go_grid_9300->get_current_cell
+    IMPORTING
+      es_row_id = ls_row_id
+      es_col_id = ls_col_id.
+
+  IF ls_row_id-index IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  READ TABLE gt_flow INTO ls_flow INDEX ls_row_id-index.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  CASE ls_col_id-fieldname.
+    WHEN 'EBELN'.
+      IF ls_flow-ebeln IS NOT INITIAL.
+        PERFORM nav_me23n USING ls_flow-ebeln.
+      ENDIF.
+    WHEN 'MATNR'.
+      IF ls_flow-matnr IS NOT INITIAL.
+        PERFORM nav_mm03_purch USING ls_flow-matnr.
+      ENDIF.
+  ENDCASE.
 ENDFORM.
 
 FORM show_bank_popup_9300.

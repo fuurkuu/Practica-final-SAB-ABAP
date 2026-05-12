@@ -20,8 +20,6 @@ FORM alv_9200_init.
     CREATE OBJECT go_evt_9200.
     SET HANDLER go_evt_9200->handle_toolbar      FOR go_grid_9200.
     SET HANDLER go_evt_9200->handle_user_command FOR go_grid_9200.
-    SET HANDLER go_evt_9200->handle_double_click FOR go_grid_9200.
-    SET HANDLER go_evt_9200->handle_hotspot_click FOR go_grid_9200.
     SET HANDLER go_evt_9200->handle_data_changed FOR go_grid_9200.
 
     CALL METHOD go_grid_9200->register_edit_event
@@ -122,14 +120,49 @@ FORM build_fcat_9200.
   PERFORM add_fcat USING 'ID_CARGA'   'ID carga'   ''  ''.
   PERFORM add_fcat USING 'ID_LINEA'   'ID línea'   ''  ''.
   PERFORM add_fcat USING 'PROVEEDOR'  'Proveedor'  ''  ''.
-  PERFORM add_fcat USING 'MATERIAL'   'Material'   ''  'X'.
+  PERFORM add_fcat USING 'MATERIAL'   'Material'   ''  ''.
   PERFORM add_fcat USING 'CANTIDAD'   'Cantidad'   'X' ''.
   PERFORM add_fcat USING 'UNIDAD'     'UM'         ''  ''.
   PERFORM add_fcat USING 'FECHA_DOC'  'Fecha'      'X' ''.
-  PERFORM add_fcat USING 'EBELN'      'Pedido'     ''  'X'.
+  PERFORM add_fcat USING 'EBELN'      'Pedido'     ''  ''.
   PERFORM add_fcat USING 'EBELP'      'Pos.'       ''  ''.
   PERFORM add_fcat USING 'PEDIDO_GEN' 'Gen.'       ''  ''.
   PERFORM add_fcat USING 'COMENTARIO' 'Comentario' 'X' ''.
+ENDFORM.
+
+FORM handle_ic1_9200.
+  DATA: ls_row_id TYPE lvc_s_row,
+        ls_col_id TYPE lvc_s_col,
+        ls_gen    TYPE ty_gen.
+
+  IF go_grid_9200 IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  CALL METHOD go_grid_9200->get_current_cell
+    IMPORTING
+      es_row_id = ls_row_id
+      es_col_id = ls_col_id.
+
+  IF ls_row_id-index IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  READ TABLE gt_gen INTO ls_gen INDEX ls_row_id-index.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  CASE ls_col_id-fieldname.
+    WHEN 'EBELN'.
+      IF ls_gen-ebeln IS NOT INITIAL.
+        PERFORM nav_me23n USING ls_gen-ebeln.
+      ENDIF.
+    WHEN 'MATERIAL'.
+      IF ls_gen-material IS NOT INITIAL.
+        PERFORM nav_mm03_purch USING ls_gen-material.
+      ENDIF.
+  ENDCASE.
 ENDFORM.
 
 FORM add_fcat USING iv_field TYPE lvc_fname
