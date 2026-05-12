@@ -13,7 +13,7 @@ TYPES tt_mail_recipients TYPE STANDARD TABLE OF adr6-smtp_addr WITH DEFAULT KEY.
 CONSTANTS: gc_obj_carga TYPE inri-object    VALUE 'ZMMCAR_MDA',
            gc_obj_linea TYPE inri-object    VALUE 'ZMMLIN_MDA',
            gc_obj_log   TYPE inri-object    VALUE 'ZMMLOG_MDA',
-           gc_bal_obj   TYPE balobj_d       VALUE 'ZLMM_MDA',
+           gc_bal_obj   TYPE balobj_d       VALUE 'ZMML_MDA',
            gc_bal_sub   TYPE balsubobj      VALUE 'PROCESO',
            gc_nr_range  TYPE inri-nrrangenr VALUE '01',
            gc_unidad    TYPE meins          VALUE 'ST'.
