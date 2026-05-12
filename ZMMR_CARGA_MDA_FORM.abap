@@ -476,6 +476,10 @@ FORM display_slg_log.
     RETURN.
   ENDIF.
 
+  " Asegura persistencia en BD antes de visualizar/buscar en SLG1
+  PERFORM bal_save.
+  COMMIT WORK AND WAIT.
+
   CALL FUNCTION 'BAL_DSP_PROFILE_STANDARD_GET'
     IMPORTING
       e_s_display_profile = ls_profile
