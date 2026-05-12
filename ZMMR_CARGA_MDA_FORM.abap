@@ -1176,6 +1176,7 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
 
     CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
     PERFORM add_log USING lv_idcar lv_idlin 'E' lv_err_msg.
+    COMMIT WORK AND WAIT.
     RETURN.
   ENDIF.
 
