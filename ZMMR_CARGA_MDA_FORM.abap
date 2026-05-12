@@ -1199,6 +1199,7 @@ FORM get_data_9300.
         lv_lifnr     TYPE lifnr,
         lv_ebeln     TYPE ebeln,
         lv_vendor_key TYPE lifnr,
+        lv_mail_flag TYPE ty_fieldname30,
         ls_mail_map  TYPE ty_mail_map,
         ls_po_mail   TYPE ty_po_mail.
   DATA lt_mail_map TYPE STANDARD TABLE OF ty_mail_map WITH DEFAULT KEY.
@@ -1282,6 +1283,8 @@ FORM get_data_9300.
 
   REFRESH lt_mail_map.
   REFRESH lt_po_mail.
+  CLEAR lv_mail_flag.
+  PERFORM get_mail_flag_component_9300 CHANGING lv_mail_flag.
   IF gt_flow IS NOT INITIAL.
     SELECT
       l~lifnr,
@@ -1313,7 +1316,7 @@ FORM get_data_9300.
   ENDIF.
 
   LOOP AT gt_flow ASSIGNING <fs_flow>.
-    CLEAR: lv_mail_stat, lv_smtp_assigned.
+    CLEAR: lv_mail_stat, lv_smtp_assigned, lv_ebeln.
 
     ASSIGN COMPONENT 'SMTP_ADDR' OF STRUCTURE <fs_flow> TO <fs_smtp_addr>.
     IF sy-subrc = 0.
@@ -1354,20 +1357,26 @@ FORM get_data_9300.
       ENDIF.
     ENDIF.
 
-    ASSIGN COMPONENT 'MAIL_ENVIADO' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
-    IF sy-subrc = 0.
-      lv_mail_stat = <fs_mail_sent>.
-    ENDIF.
-    IF sy-subrc <> 0.
-      ASSIGN COMPONENT 'ENVIADO_MAIL' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
-      IF sy-subrc = 0.
-        lv_mail_stat = <fs_mail_sent>.
+    IF lv_mail_flag IS NOT INITIAL.
+      ASSIGN COMPONENT 'EBELN' OF STRUCTURE <fs_flow> TO <fs_ebeln>.
+      IF sy-subrc = 0 AND <fs_ebeln> IS NOT INITIAL.
+        lv_ebeln = <fs_ebeln>.
+        PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_stat.
       ENDIF.
-    ENDIF.
-    IF sy-subrc <> 0.
-      ASSIGN COMPONENT 'MAIL_SENT' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+
+      ASSIGN COMPONENT 'MAIL_ENVIADO' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
       IF sy-subrc = 0.
-        lv_mail_stat = <fs_mail_sent>.
+        <fs_mail_sent> = lv_mail_stat.
+      ELSE.
+        ASSIGN COMPONENT 'ENVIADO_MAIL' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+        IF sy-subrc = 0.
+          <fs_mail_sent> = lv_mail_stat.
+        ELSE.
+          ASSIGN COMPONENT 'MAIL_SENT' OF STRUCTURE <fs_flow> TO <fs_mail_sent>.
+          IF sy-subrc = 0.
+            <fs_mail_sent> = lv_mail_stat.
+          ENDIF.
+        ENDIF.
       ENDIF.
     ENDIF.
 
@@ -1822,20 +1831,19 @@ FORM send_mail_csv_9300.
 
   PERFORM get_mail_flag_component_9300 CHANGING lv_mail_flag.
   IF lv_mail_flag IS INITIAL.
-    MESSAGE 'No existe campo MAIL_ENVIADO/ENVIADO_MAIL. Se enviará sin control de reenvío.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL/MAIL_SENT en ZTMM_CARGAS_MDA' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
-  IF lv_mail_flag IS NOT INITIAL.
-    LOOP AT lt_orders INTO lv_ebeln.
-      CLEAR lv_mail_sent.
-      PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_sent.
-      IF lv_mail_sent = 'X'.
-        CONCATENATE 'El pedido' lv_ebeln 'ya fue enviado por correo' INTO lv_log_msg SEPARATED BY space.
-        MESSAGE lv_log_msg TYPE 'S' DISPLAY LIKE 'E'.
-        RETURN.
-      ENDIF.
-    ENDLOOP.
-  ENDIF.
+  LOOP AT lt_orders INTO lv_ebeln.
+    CLEAR lv_mail_sent.
+    PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_sent.
+    IF lv_mail_sent = 'X'.
+      CONCATENATE 'El pedido' lv_ebeln 'ya fue enviado por correo' INTO lv_log_msg SEPARATED BY space.
+      MESSAGE lv_log_msg TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ENDLOOP.
 
   IF lv_default_mail IS INITIAL.
     MESSAGE 'No hay email maestro. Introduce destinatario manualmente en el popup' TYPE 'S'.
@@ -1959,11 +1967,9 @@ FORM send_mail_csv_9300.
 
   COMMIT WORK.
 
-  IF lv_mail_flag IS NOT INITIAL.
-    LOOP AT lt_orders INTO lv_ebeln.
-      PERFORM mark_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag.
-    ENDLOOP.
-  ENDIF.
+  LOOP AT lt_orders INTO lv_ebeln.
+    PERFORM mark_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag.
+  ENDLOOP.
   COMMIT WORK.
 
   CLEAR lv_log_msg.
