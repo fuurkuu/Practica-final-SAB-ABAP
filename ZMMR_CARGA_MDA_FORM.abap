@@ -1832,19 +1832,20 @@ FORM send_mail_csv_9300.
 
   PERFORM get_mail_flag_component_9300 CHANGING lv_mail_flag.
   IF lv_mail_flag IS INITIAL.
-    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL/MAIL_SENT en ZTMM_CARGAS_MDA' TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
+    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL/MAIL_SENT en ZTMM_CARGAS_MDA (se enviará sin control de reenvío)' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 
-  LOOP AT lt_orders INTO lv_ebeln.
-    CLEAR lv_mail_sent.
-    PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_sent.
-    IF lv_mail_sent = 'X'.
-      CONCATENATE 'El pedido' lv_ebeln 'ya fue enviado por correo' INTO lv_log_msg SEPARATED BY space.
-      MESSAGE lv_log_msg TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
-  ENDLOOP.
+  IF lv_mail_flag IS NOT INITIAL.
+    LOOP AT lt_orders INTO lv_ebeln.
+      CLEAR lv_mail_sent.
+      PERFORM is_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag CHANGING lv_mail_sent.
+      IF lv_mail_sent = 'X'.
+        CONCATENATE 'El pedido' lv_ebeln 'ya fue enviado por correo' INTO lv_log_msg SEPARATED BY space.
+        MESSAGE lv_log_msg TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
 
   IF lv_default_mail IS INITIAL.
     MESSAGE 'No hay email maestro. Introduce destinatario manualmente en el popup' TYPE 'S'.
@@ -1971,9 +1972,11 @@ FORM send_mail_csv_9300.
 
   COMMIT WORK.
 
-  LOOP AT lt_orders INTO lv_ebeln.
-    PERFORM mark_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag.
-  ENDLOOP.
+  IF lv_mail_flag IS NOT INITIAL.
+    LOOP AT lt_orders INTO lv_ebeln.
+      PERFORM mark_mail_sent_for_ebeln_9300 USING lv_ebeln lv_mail_flag.
+    ENDLOOP.
+  ENDIF.
   COMMIT WORK.
 
   CLEAR lv_log_msg.
