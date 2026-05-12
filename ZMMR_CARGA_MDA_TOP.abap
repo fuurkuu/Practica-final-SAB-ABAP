@@ -77,6 +77,12 @@ DATA: go_cont_9300 TYPE REF TO cl_gui_custom_container,
       gt_fcat_9300 TYPE lvc_t_fcat,
       gs_layo_9300 TYPE lvc_s_layo.
 
+DATA: gt_log_9400 TYPE STANDARD TABLE OF ztmm_log_mda WITH DEFAULT KEY.
+DATA: go_cont_9400 TYPE REF TO cl_gui_custom_container,
+      go_grid_9400 TYPE REF TO cl_gui_alv_grid,
+      gt_fcat_9400 TYPE lvc_t_fcat,
+      gs_layo_9400 TYPE lvc_s_layo.
+
 DATA: gv_9300_need_popup TYPE c VALUE 'X',
       gv_f_ebeln         TYPE ebeln,
       gv_f_aedat         TYPE aedat,

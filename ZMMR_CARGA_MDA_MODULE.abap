@@ -33,6 +33,11 @@ MODULE user_command_9000 INPUT.
     WHEN 'BTN4'.
       gv_subscr = '9400'.
 
+      IF go_grid_9400 IS BOUND.
+        PERFORM get_data_9400.
+        CALL METHOD go_grid_9400->refresh_table_display.
+      ENDIF.
+
     WHEN 'BACK2' OR 'LEAVE2' OR 'CANCEL2'
       OR 'BACK'  OR 'EXIT'   OR 'CANC'.
       LEAVE TO SCREEN 0.
@@ -72,4 +77,11 @@ MODULE pbo_9300 OUTPUT.
 ENDMODULE.
 
 MODULE pai_9300 INPUT.
+ENDMODULE.
+
+MODULE pbo_9400 OUTPUT.
+  PERFORM alv_9400_init.
+ENDMODULE.
+
+MODULE pai_9400 INPUT.
 ENDMODULE.
