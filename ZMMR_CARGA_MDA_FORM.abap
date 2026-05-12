@@ -228,6 +228,7 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
         lv_matnr_key TYPE matnr,
         lv_dummy_lifnr TYPE lifnr,
         lv_dummy_matnr TYPE matnr,
+        lv_infnr TYPE eina-infnr,
         ls_cfg   TYPE ztmm_cfgpo_mda.
 
   cv_valid = space.
@@ -307,6 +308,22 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
         AND werks = ls_cfg-werks.
     IF sy-subrc <> 0.
       cv_msg = 'material no extendido a WERKS de configuración'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  IF ls_cfg-ekorg IS NOT INITIAL.
+    SELECT SINGLE a~infnr
+      FROM eina AS a
+      INNER JOIN eine AS e
+        ON e~infnr = a~infnr
+      INTO lv_infnr
+      WHERE a~lifnr = lv_lifnr_key
+        AND a~matnr = lv_matnr_key
+        AND a~loekz = space
+        AND e~ekorg = ls_cfg-ekorg.
+    IF sy-subrc <> 0.
+      cv_msg = 'sin registro info proveedor-material en EKORG (EINA/EINE)'.
       RETURN.
     ENDIF.
   ENDIF.
