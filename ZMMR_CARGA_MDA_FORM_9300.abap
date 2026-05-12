@@ -234,6 +234,7 @@ FORM alv_9300_init.
 
     CREATE OBJECT go_evt_9300.
     SET HANDLER go_evt_9300->handle_double_click FOR go_grid_9300.
+    SET HANDLER go_evt_9300->handle_hotspot_click FOR go_grid_9300.
     SET HANDLER go_evt_9300->handle_toolbar      FOR go_grid_9300.
     SET HANDLER go_evt_9300->handle_user_command FOR go_grid_9300.
 
