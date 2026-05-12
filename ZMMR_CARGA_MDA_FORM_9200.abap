@@ -20,6 +20,7 @@ FORM alv_9200_init.
     CREATE OBJECT go_evt_9200.
     SET HANDLER go_evt_9200->handle_toolbar      FOR go_grid_9200.
     SET HANDLER go_evt_9200->handle_user_command FOR go_grid_9200.
+    SET HANDLER go_evt_9200->handle_double_click FOR go_grid_9200.
     SET HANDLER go_evt_9200->handle_data_changed FOR go_grid_9200.
 
     CALL METHOD go_grid_9200->register_edit_event
