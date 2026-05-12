@@ -4,4 +4,7 @@ INCLUDE zmmr_carga_mda_top.
 INCLUDE zmmr_carga_mda_screen.
 INCLUDE zmmr_carga_mda_class.
 INCLUDE zmmr_carga_mda_module.
-INCLUDE zmmr_carga_mda_form.
+INCLUDE zmmr_carga_mda_form_global.
+INCLUDE zmmr_carga_mda_form_9200.
+INCLUDE zmmr_carga_mda_form_9300.
+INCLUDE zmmr_carga_mda_form_9400.
