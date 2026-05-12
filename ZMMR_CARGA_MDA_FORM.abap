@@ -106,6 +106,8 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
         lv_id_linea_ini TYPE ztmm_log_mda-id_linea,
         lv_name_fich    TYPE string,
         lv_prov_up      TYPE string,
+        lv_valid_line   TYPE c,
+        lv_val_msg      TYPE string,
         lv_msg          TYPE string,
         lv_tabix_txt    TYPE c LENGTH 10.
 
@@ -177,6 +179,17 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       CONTINUE.
     ENDIF.
 
+    CLEAR: lv_valid_line, lv_val_msg.
+    PERFORM validate_business_line USING lv_prov lv_mat CHANGING lv_valid_line lv_val_msg.
+    IF lv_valid_line <> 'X'.
+      cv_err = cv_err + 1.
+      WRITE sy-tabix TO lv_tabix_txt.
+      CONDENSE lv_tabix_txt.
+      CONCATENATE 'Línea' lv_tabix_txt ':' lv_val_msg INTO lv_msg SEPARATED BY space.
+      PERFORM add_log USING iv_id_carga lv_id_linea_ini 'E' lv_msg.
+      CONTINUE.
+    ENDIF.
+
     PERFORM get_next_number USING gc_obj_linea CHANGING lv_id_linea.
 
     CLEAR ls_carga.
@@ -205,6 +218,100 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       PERFORM add_log USING iv_id_carga lv_id_linea 'E' lv_msg.
     ENDIF.
   ENDLOOP.
+ENDFORM.
+
+FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
+                                  iv_material  TYPE ztmm_cargas_mda-material
+                            CHANGING cv_valid  TYPE c
+                                     cv_msg    TYPE string.
+  DATA: lv_lifnr_key TYPE lifnr,
+        lv_matnr_key TYPE matnr,
+        lv_dummy_lifnr TYPE lifnr,
+        lv_dummy_matnr TYPE matnr,
+        ls_cfg   TYPE ztmm_cfgpo_mda.
+
+  cv_valid = space.
+  CLEAR cv_msg.
+
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = iv_proveedor
+    IMPORTING
+      output = lv_lifnr_key.
+
+  CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+    EXPORTING
+      input  = iv_material
+    IMPORTING
+      output = lv_matnr_key
+    EXCEPTIONS
+      OTHERS = 1.
+  IF sy-subrc <> 0.
+    lv_matnr_key = iv_material.
+  ENDIF.
+
+  SELECT SINGLE lifnr
+    FROM lfa1
+    INTO lv_dummy_lifnr
+    WHERE lifnr = lv_lifnr_key.
+  IF sy-subrc <> 0.
+    cv_msg = 'proveedor inexistente en LFA1'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE matnr
+    FROM mara
+    INTO lv_dummy_matnr
+    WHERE matnr = lv_matnr_key.
+  IF sy-subrc <> 0.
+    cv_msg = 'material inexistente en MARA'.
+    RETURN.
+  ENDIF.
+
+  CLEAR ls_cfg.
+  SELECT SINGLE *
+    INTO ls_cfg
+    FROM ztmm_cfgpo_mda
+    WHERE uname  = sy-uname
+      AND activo = 'X'.
+
+  IF sy-subrc <> 0.
+    SELECT SINGLE *
+      INTO ls_cfg
+      FROM ztmm_cfgpo_mda
+      WHERE activo = 'X'.
+  ENDIF.
+
+  IF sy-subrc <> 0.
+    cv_msg = 'no hay configuración activa en ZTMM_CFGPO_MDA'.
+    RETURN.
+  ENDIF.
+
+  IF ls_cfg-ekorg IS NOT INITIAL.
+    SELECT SINGLE lifnr
+      FROM lfm1
+      INTO lv_dummy_lifnr
+      WHERE lifnr = lv_lifnr_key
+        AND ekorg = ls_cfg-ekorg.
+    IF sy-subrc <> 0.
+      cv_msg = 'proveedor no extendido a EKORG de configuración'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  IF ls_cfg-werks IS NOT INITIAL.
+    SELECT SINGLE matnr
+      FROM marc
+      INTO lv_dummy_matnr
+      WHERE matnr = lv_matnr_key
+        AND werks = ls_cfg-werks.
+    IF sy-subrc <> 0.
+      cv_msg = 'material no extendido a WERKS de configuración'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  cv_valid = 'X'.
 ENDFORM.
 
 FORM get_next_number USING iv_object TYPE inri-object
