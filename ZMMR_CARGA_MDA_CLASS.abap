@@ -16,6 +16,9 @@ CLASS lcl_evt_9200 DEFINITION.
     METHODS handle_user_command
       FOR EVENT user_command OF cl_gui_alv_grid
       IMPORTING e_ucomm.
+    METHODS handle_double_click
+      FOR EVENT double_click OF cl_gui_alv_grid
+      IMPORTING e_row e_column es_row_no.
     METHODS handle_data_changed
       FOR EVENT data_changed OF cl_gui_alv_grid
       IMPORTING er_data_changed e_ucomm.
@@ -29,6 +32,9 @@ CLASS lcl_evt_9300 DEFINITION.
     METHODS handle_user_command
       FOR EVENT user_command OF cl_gui_alv_grid
       IMPORTING e_ucomm.
+    METHODS handle_double_click
+      FOR EVENT double_click OF cl_gui_alv_grid
+      IMPORTING e_row e_column es_row_no.
 ENDCLASS.
 
 CLASS lcl_util IMPLEMENTATION.
@@ -84,6 +90,10 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_user_command.
+    DATA: ls_row_id TYPE lvc_s_row,
+          ls_col_id TYPE lvc_s_col,
+          ls_gen    TYPE ty_gen.
+
     CASE e_ucomm.
       WHEN 'ZEDIT'.
         PERFORM open_edit_mode.
@@ -94,7 +104,54 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
       WHEN 'ZGENPO'.
         PERFORM generate_po_selected.
       WHEN '&IC1'.
-        PERFORM handle_ic1_9200.
+        IF go_grid_9200 IS NOT BOUND.
+          RETURN.
+        ENDIF.
+
+        CALL METHOD go_grid_9200->get_current_cell
+          IMPORTING
+            es_row_id = ls_row_id
+            es_col_id = ls_col_id.
+
+        IF ls_row_id-index IS INITIAL.
+          RETURN.
+        ENDIF.
+
+        READ TABLE gt_gen INTO ls_gen INDEX ls_row_id-index.
+        IF sy-subrc <> 0.
+          RETURN.
+        ENDIF.
+
+        CASE ls_col_id-fieldname.
+          WHEN 'EBELN'.
+            IF ls_gen-ebeln IS NOT INITIAL.
+              PERFORM nav_me23n USING ls_gen-ebeln.
+            ENDIF.
+          WHEN 'MATERIAL'.
+            IF ls_gen-material IS NOT INITIAL.
+              PERFORM nav_mm03_purch USING ls_gen-material.
+            ENDIF.
+        ENDCASE.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD handle_double_click.
+    DATA ls_gen TYPE ty_gen.
+
+    READ TABLE gt_gen INTO ls_gen INDEX e_row-index.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    CASE e_column-fieldname.
+      WHEN 'EBELN'.
+        IF ls_gen-ebeln IS NOT INITIAL.
+          PERFORM nav_me23n USING ls_gen-ebeln.
+        ENDIF.
+      WHEN 'MATERIAL'.
+        IF ls_gen-material IS NOT INITIAL.
+          PERFORM nav_mm03_purch USING ls_gen-material.
+        ENDIF.
     ENDCASE.
   ENDMETHOD.
 
@@ -166,6 +223,10 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_user_command.
+    DATA: ls_row_id TYPE lvc_s_row,
+          ls_col_id TYPE lvc_s_col,
+          ls_flow   TYPE zemm_flujo_mda.
+
     CASE e_ucomm.
       WHEN 'ZBANK'.
         PERFORM show_bank_popup_9300.
@@ -176,7 +237,54 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
       WHEN 'ZMAIL'.
         PERFORM send_mail_csv_9300.
       WHEN '&IC1'.
-        PERFORM handle_ic1_9300.
+        IF go_grid_9300 IS NOT BOUND.
+          RETURN.
+        ENDIF.
+
+        CALL METHOD go_grid_9300->get_current_cell
+          IMPORTING
+            es_row_id = ls_row_id
+            es_col_id = ls_col_id.
+
+        IF ls_row_id-index IS INITIAL.
+          RETURN.
+        ENDIF.
+
+        READ TABLE gt_flow INTO ls_flow INDEX ls_row_id-index.
+        IF sy-subrc <> 0.
+          RETURN.
+        ENDIF.
+
+        CASE ls_col_id-fieldname.
+          WHEN 'EBELN'.
+            IF ls_flow-ebeln IS NOT INITIAL.
+              PERFORM nav_me23n USING ls_flow-ebeln.
+            ENDIF.
+          WHEN 'MATNR'.
+            IF ls_flow-matnr IS NOT INITIAL.
+              PERFORM nav_mm03_purch USING ls_flow-matnr.
+            ENDIF.
+        ENDCASE.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD handle_double_click.
+    DATA ls_flow TYPE zemm_flujo_mda.
+
+    READ TABLE gt_flow INTO ls_flow INDEX e_row-index.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    CASE e_column-fieldname.
+      WHEN 'EBELN'.
+        IF ls_flow-ebeln IS NOT INITIAL.
+          PERFORM nav_me23n USING ls_flow-ebeln.
+        ENDIF.
+      WHEN 'MATNR'.
+        IF ls_flow-matnr IS NOT INITIAL.
+          PERFORM nav_mm03_purch USING ls_flow-matnr.
+        ENDIF.
     ENDCASE.
   ENDMETHOD.
 
