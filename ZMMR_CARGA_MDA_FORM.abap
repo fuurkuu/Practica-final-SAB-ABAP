@@ -363,35 +363,7 @@ FORM add_log USING iv_id_carga TYPE ztmm_log_mda-id_carga
                    iv_id_linea TYPE ztmm_log_mda-id_linea
                    iv_nivel    TYPE ztmm_log_mda-nivel
                    iv_msg      TYPE string.
-  DATA: lv_log_id TYPE ztmm_log_mda-log_id,
-        ls_log    TYPE ztmm_log_mda.
-  FIELD-SYMBOLS <fs_msg> TYPE any.
-
-  PERFORM get_next_number USING gc_obj_log CHANGING lv_log_id.
-
-  CLEAR ls_log.
-  ls_log-log_id   = lv_log_id.
-  ls_log-id_carga = iv_id_carga.
-  ls_log-id_linea = iv_id_linea.
-  ls_log-nivel    = iv_nivel.
-  ls_log-usuario  = sy-uname.
-  ls_log-fecha    = sy-datum.
-  ls_log-hora     = sy-uzeit.
-
-  ASSIGN COMPONENT 'MENSAJE' OF STRUCTURE ls_log TO <fs_msg>.
-  IF sy-subrc <> 0.
-    ASSIGN COMPONENT 'MSGTX' OF STRUCTURE ls_log TO <fs_msg>.
-  ENDIF.
-  IF sy-subrc <> 0.
-    ASSIGN COMPONENT 'MESSAGE' OF STRUCTURE ls_log TO <fs_msg>.
-  ENDIF.
-  IF sy-subrc = 0.
-    <fs_msg> = iv_msg.
-  ENDIF.
-
-  INSERT ztmm_log_mda FROM ls_log.
-
-  PERFORM bal_add_message USING iv_id_carga iv_nivel iv_msg.
+  PERFORM bal_add_message USING iv_id_carga iv_id_linea iv_nivel iv_msg.
 ENDFORM.
 
 FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
@@ -431,10 +403,12 @@ FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
 ENDFORM.
 
 FORM bal_add_message USING iv_id_carga TYPE ztmm_log_mda-id_carga
+                           iv_id_linea TYPE ztmm_log_mda-id_linea
                            iv_nivel    TYPE ztmm_log_mda-nivel
                            iv_msg      TYPE string.
   DATA: ls_bal_msg TYPE bal_s_msg,
         lv_msgty   TYPE symsgty,
+        lv_linea   TYPE c LENGTH 20,
         lv_text200 TYPE c LENGTH 200.
 
   PERFORM bal_init USING iv_id_carga.
@@ -449,7 +423,15 @@ FORM bal_add_message USING iv_id_carga TYPE ztmm_log_mda-id_carga
     lv_msgty = 'I'.
   ENDIF.
 
-  lv_text200 = iv_msg.
+  CLEAR lv_text200.
+  IF iv_id_linea IS NOT INITIAL.
+    CLEAR lv_linea.
+    WRITE iv_id_linea TO lv_linea.
+    CONDENSE lv_linea.
+    CONCATENATE 'Linea' lv_linea '-' iv_msg INTO lv_text200 SEPARATED BY space.
+  ELSE.
+    lv_text200 = iv_msg.
+  ENDIF.
 
   CLEAR ls_bal_msg.
   ls_bal_msg-msgty = lv_msgty.
@@ -483,6 +465,30 @@ FORM bal_save.
       i_t_log_handle = gt_bal_log_handle
     EXCEPTIONS
       OTHERS         = 1.
+ENDFORM.
+
+FORM display_slg_log.
+  DATA ls_profile TYPE bal_s_prof.
+
+  IF gt_bal_log_handle IS INITIAL.
+    MESSAGE 'No hay logs SLG en memoria. Abriendo SLG1' TYPE 'S'.
+    CALL TRANSACTION 'SLG1'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'BAL_DSP_PROFILE_STANDARD_GET'
+    IMPORTING
+      e_s_display_profile = ls_profile
+    EXCEPTIONS
+      OTHERS              = 1.
+
+  CALL FUNCTION 'BAL_DSP_LOG_DISPLAY'
+    EXPORTING
+      i_s_display_profile = ls_profile
+    TABLES
+      i_t_log_handle      = gt_bal_log_handle
+    EXCEPTIONS
+      OTHERS              = 1.
 ENDFORM.
 
 FORM get_file_name USING iv_full_path TYPE rlgrap-filename

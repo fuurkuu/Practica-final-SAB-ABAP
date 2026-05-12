@@ -31,12 +31,7 @@ MODULE user_command_9000 INPUT.
       ENDIF.
 
     WHEN 'BTN4'.
-      gv_subscr = '9400'.
-
-      IF go_grid_9400 IS BOUND.
-        PERFORM get_data_9400.
-        CALL METHOD go_grid_9400->refresh_table_display.
-      ENDIF.
+      PERFORM display_slg_log.
 
     WHEN 'BACK2' OR 'LEAVE2' OR 'CANCEL2'
       OR 'BACK'  OR 'EXIT'   OR 'CANC'.
