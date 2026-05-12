@@ -492,7 +492,6 @@ FORM display_slg_log.
   CALL FUNCTION 'BAL_DSP_LOG_DISPLAY'
     EXPORTING
       i_s_display_profile = ls_profile
-    TABLES
       i_t_log_handle      = lt_log_handle_dsp
     EXCEPTIONS
       OTHERS              = 1.
