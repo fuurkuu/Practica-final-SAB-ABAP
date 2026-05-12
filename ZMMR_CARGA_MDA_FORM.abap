@@ -1857,7 +1857,7 @@ FORM send_mail_csv_9300.
   ENDIF.
 
   REFRESH lt_csv_lines.
-  APPEND 'Proveedor;Número de pedido;Posición;Material;Cantidad;Fichero cargado;Fecha de carga' TO lt_csv_lines.
+  APPEND 'Proveedor;Numero de pedido;Posicion;Material;Cantidad;Fichero cargado;Fecha de carga' TO lt_csv_lines.
 
   CLEAR lv_orders_txt.
   LOOP AT lt_orders INTO lv_ebeln.
