@@ -8,6 +8,9 @@ FORM run USING iv_file TYPE rlgrap-filename.
         lv_id_linea_ini TYPE ztmm_log_mda-id_linea.
 
   CLEAR: gv_ok, gv_err, lv_id_linea_ini.
+  CLEAR gv_bal_log_handle.
+  CLEAR gv_bal_extnumber.
+  REFRESH gt_bal_log_handle.
 
   PERFORM validate_file USING iv_file.
   PERFORM upload_file USING iv_file.
@@ -387,6 +390,99 @@ FORM add_log USING iv_id_carga TYPE ztmm_log_mda-id_carga
   ENDIF.
 
   INSERT ztmm_log_mda FROM ls_log.
+
+  PERFORM bal_add_message USING iv_id_carga iv_nivel iv_msg.
+ENDFORM.
+
+FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
+  DATA ls_bal_log TYPE bal_s_log.
+  DATA lv_extnumber TYPE balnrext.
+
+  CLEAR lv_extnumber.
+  IF iv_id_carga IS NOT INITIAL.
+    lv_extnumber = iv_id_carga.
+  ENDIF.
+
+  IF gv_bal_log_handle IS NOT INITIAL AND gv_bal_extnumber = lv_extnumber.
+    RETURN.
+  ENDIF.
+
+  CLEAR ls_bal_log.
+  ls_bal_log-object    = gc_bal_obj.
+  ls_bal_log-subobject = gc_bal_sub.
+  ls_bal_log-aluser    = sy-uname.
+  ls_bal_log-alprog    = sy-repid.
+  IF lv_extnumber IS NOT INITIAL.
+    ls_bal_log-extnumber = lv_extnumber.
+  ENDIF.
+
+  CALL FUNCTION 'BAL_LOG_CREATE'
+    EXPORTING
+      i_s_log      = ls_bal_log
+    IMPORTING
+      e_log_handle = gv_bal_log_handle
+    EXCEPTIONS
+      OTHERS       = 1.
+
+  IF sy-subrc = 0 AND gv_bal_log_handle IS NOT INITIAL.
+    gv_bal_extnumber = lv_extnumber.
+    APPEND gv_bal_log_handle TO gt_bal_log_handle.
+  ENDIF.
+ENDFORM.
+
+FORM bal_add_message USING iv_id_carga TYPE ztmm_log_mda-id_carga
+                           iv_nivel    TYPE ztmm_log_mda-nivel
+                           iv_msg      TYPE string.
+  DATA: ls_bal_msg TYPE bal_s_msg,
+        lv_msgty   TYPE symsgty,
+        lv_text200 TYPE c LENGTH 200.
+
+  PERFORM bal_init USING iv_id_carga.
+  IF gv_bal_log_handle IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_msgty = iv_nivel.
+  TRANSLATE lv_msgty TO UPPER CASE.
+  IF lv_msgty <> 'S' AND lv_msgty <> 'I' AND lv_msgty <> 'W' AND
+     lv_msgty <> 'E' AND lv_msgty <> 'A'.
+    lv_msgty = 'I'.
+  ENDIF.
+
+  lv_text200 = iv_msg.
+
+  CLEAR ls_bal_msg.
+  ls_bal_msg-msgty = lv_msgty.
+  ls_bal_msg-msgid = '00'.
+  ls_bal_msg-msgno = '398'.
+  ls_bal_msg-msgv1 = lv_text200+0(50).
+  ls_bal_msg-msgv2 = lv_text200+50(50).
+  ls_bal_msg-msgv3 = lv_text200+100(50).
+  ls_bal_msg-msgv4 = lv_text200+150(50).
+
+  CALL FUNCTION 'BAL_LOG_MSG_ADD'
+    EXPORTING
+      i_log_handle = gv_bal_log_handle
+      i_s_msg      = ls_bal_msg
+    EXCEPTIONS
+      OTHERS       = 1.
+
+  IF sy-subrc = 0.
+    PERFORM bal_save.
+  ENDIF.
+ENDFORM.
+
+FORM bal_save.
+  IF gt_bal_log_handle IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'BAL_DB_SAVE'
+    EXPORTING
+      i_save_all     = 'X'
+      i_t_log_handle = gt_bal_log_handle
+    EXCEPTIONS
+      OTHERS         = 1.
 ENDFORM.
 
 FORM get_file_name USING iv_full_path TYPE rlgrap-filename
