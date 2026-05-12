@@ -1287,26 +1287,26 @@ FORM get_data_9300.
       l~lifnr,
       ad~smtp_addr,
       ad~flgdefault
-      INTO TABLE lt_mail_map
+      INTO TABLE @lt_mail_map
       FROM lfa1 AS l
       INNER JOIN adr6 AS ad
         ON ad~addrnumber = l~adrnr
-      FOR ALL ENTRIES IN gt_flow
-      WHERE l~lifnr = gt_flow-lifnr
-        AND ad~smtp_addr <> space.
+      FOR ALL ENTRIES IN @gt_flow
+      WHERE l~lifnr = @gt_flow-lifnr
+        AND ad~smtp_addr <> @space.
 
     SORT lt_mail_map BY lifnr flgdefault DESCENDING.
     DELETE ADJACENT DUPLICATES FROM lt_mail_map COMPARING lifnr.
 
     SELECT h~ebeln
            ad~smtp_addr
-      INTO TABLE lt_po_mail
+      INTO TABLE @lt_po_mail
       FROM ekko AS h
       INNER JOIN adr6 AS ad
         ON ad~addrnumber = h~adrnr
-      FOR ALL ENTRIES IN gt_flow
-      WHERE h~ebeln = gt_flow-ebeln
-        AND ad~smtp_addr <> space.
+      FOR ALL ENTRIES IN @gt_flow
+      WHERE h~ebeln = @gt_flow-ebeln
+        AND ad~smtp_addr <> @space.
 
     SORT lt_po_mail BY ebeln.
     DELETE ADJACENT DUPLICATES FROM lt_po_mail COMPARING ebeln.
@@ -1984,12 +1984,12 @@ FORM get_po_mail_9300 USING iv_ebeln TYPE ebeln
   ENDIF.
 
   SELECT SINGLE ad~smtp_addr
-    INTO cv_mail
+    INTO @cv_mail
     FROM ekko AS h
     INNER JOIN adr6 AS ad
       ON ad~addrnumber = h~adrnr
-    WHERE h~ebeln = iv_ebeln
-      AND ad~smtp_addr <> space.
+    WHERE h~ebeln = @iv_ebeln
+      AND ad~smtp_addr <> @space.
 ENDFORM.
 
 FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
@@ -2001,22 +2001,22 @@ FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
   ENDIF.
 
   SELECT SINGLE ad~smtp_addr
-    INTO cv_mail
+    INTO @cv_mail
     FROM lfa1 AS l
     INNER JOIN adr6 AS ad
       ON ad~addrnumber = l~adrnr
-    WHERE l~lifnr = iv_lifnr
+    WHERE l~lifnr = @iv_lifnr
       AND ad~flgdefault = 'X'
-      AND ad~smtp_addr <> space.
+      AND ad~smtp_addr <> @space.
 
   IF sy-subrc <> 0 OR cv_mail IS INITIAL.
     SELECT SINGLE ad~smtp_addr
-      INTO cv_mail
+      INTO @cv_mail
       FROM lfa1 AS l
       INNER JOIN adr6 AS ad
         ON ad~addrnumber = l~adrnr
-      WHERE l~lifnr = iv_lifnr
-        AND ad~smtp_addr <> space.
+      WHERE l~lifnr = @iv_lifnr
+        AND ad~smtp_addr <> @space.
   ENDIF.
 ENDFORM.
 
