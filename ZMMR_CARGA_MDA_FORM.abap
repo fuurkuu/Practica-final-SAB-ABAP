@@ -1,6 +1,10 @@
 *&---------------------------------------------------------------------*
 *& Include          ZMMR_CARGA_MDA_FORM
 *&---------------------------------------------------------------------*
+
+*---------------------------------------------------------------------*
+* GLOBAL - reutilizable entre dynpros
+*---------------------------------------------------------------------*
 FORM run USING iv_file TYPE rlgrap-filename.
   DATA: lv_msg          TYPE string,
         lv_ok_txt       TYPE c LENGTH 20,
@@ -1262,6 +1266,9 @@ FORM nav_mm03_purch USING iv_matnr TYPE matnr.
   CALL TRANSACTION 'MM03' AND SKIP FIRST SCREEN.
 ENDFORM.
 
+*---------------------------------------------------------------------*
+* 9300 - Flujo completo + correo
+*---------------------------------------------------------------------*
 FORM get_data_9300.
   TYPES: BEGIN OF ty_mail_map,
            lifnr     TYPE lifnr,
@@ -1828,74 +1835,6 @@ FORM show_bank_popup_9300.
   ENDTRY.
 ENDFORM.
 
-*---------------------------------------------------------------------*
-* 9400 - Log del proceso
-*---------------------------------------------------------------------*
-FORM get_data_9400.
-  REFRESH gt_log_9400.
-
-  IF gv_id_carga IS NOT INITIAL.
-    SELECT *
-      INTO TABLE gt_log_9400
-      FROM ztmm_log_mda
-      WHERE id_carga = gv_id_carga.
-  ENDIF.
-
-  IF gt_log_9400 IS INITIAL.
-    SELECT *
-      INTO TABLE gt_log_9400
-      FROM ztmm_log_mda.
-  ENDIF.
-
-  SORT gt_log_9400 BY log_id DESCENDING.
-ENDFORM.
-
-FORM build_fcat_9400.
-  REFRESH gt_fcat_9400.
-
-  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
-    EXPORTING
-      i_structure_name = 'ZTMM_LOG_MDA'
-    CHANGING
-      ct_fieldcat      = gt_fcat_9400
-    EXCEPTIONS
-      OTHERS           = 1.
-
-  IF sy-subrc <> 0 OR gt_fcat_9400 IS INITIAL.
-    MESSAGE 'No se pudo construir catálogo de campos 9400' TYPE 'S' DISPLAY LIKE 'E'.
-  ENDIF.
-ENDFORM.
-
-FORM alv_9400_init.
-  PERFORM get_data_9400.
-
-  IF go_cont_9400 IS INITIAL.
-    CREATE OBJECT go_cont_9400
-      EXPORTING
-        container_name = 'CC_ALV_9400'.
-
-    CREATE OBJECT go_grid_9400
-      EXPORTING
-        i_parent = go_cont_9400.
-
-    PERFORM build_fcat_9400.
-
-    CLEAR gs_layo_9400.
-    gs_layo_9400-sel_mode   = 'A'.
-    gs_layo_9400-zebra      = 'X'.
-    gs_layo_9400-cwidth_opt = 'X'.
-
-    CALL METHOD go_grid_9400->set_table_for_first_display
-      EXPORTING
-        is_layout       = gs_layo_9400
-      CHANGING
-        it_outtab       = gt_log_9400
-        it_fieldcatalog = gt_fcat_9400.
-  ELSE.
-    CALL METHOD go_grid_9400->refresh_table_display.
-  ENDIF.
-ENDFORM.
-
 FORM send_mail_csv_9300.
   DATA: lt_rows          TYPE lvc_t_row,
         ls_row           TYPE lvc_s_row,
@@ -2347,4 +2286,72 @@ FORM mark_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
       MODIFY ztmm_cargas_mda FROM ls_carga.
     ENDIF.
   ENDLOOP.
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* 9400 - Log del proceso
+*---------------------------------------------------------------------*
+FORM get_data_9400.
+  REFRESH gt_log_9400.
+
+  IF gv_id_carga IS NOT INITIAL.
+    SELECT *
+      INTO TABLE gt_log_9400
+      FROM ztmm_log_mda
+      WHERE id_carga = gv_id_carga.
+  ENDIF.
+
+  IF gt_log_9400 IS INITIAL.
+    SELECT *
+      INTO TABLE gt_log_9400
+      FROM ztmm_log_mda.
+  ENDIF.
+
+  SORT gt_log_9400 BY log_id DESCENDING.
+ENDFORM.
+
+FORM build_fcat_9400.
+  REFRESH gt_fcat_9400.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = 'ZTMM_LOG_MDA'
+    CHANGING
+      ct_fieldcat      = gt_fcat_9400
+    EXCEPTIONS
+      OTHERS           = 1.
+
+  IF sy-subrc <> 0 OR gt_fcat_9400 IS INITIAL.
+    MESSAGE 'No se pudo construir catálogo de campos 9400' TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
+
+FORM alv_9400_init.
+  PERFORM get_data_9400.
+
+  IF go_cont_9400 IS INITIAL.
+    CREATE OBJECT go_cont_9400
+      EXPORTING
+        container_name = 'CC_ALV_9400'.
+
+    CREATE OBJECT go_grid_9400
+      EXPORTING
+        i_parent = go_cont_9400.
+
+    PERFORM build_fcat_9400.
+
+    CLEAR gs_layo_9400.
+    gs_layo_9400-sel_mode   = 'A'.
+    gs_layo_9400-zebra      = 'X'.
+    gs_layo_9400-cwidth_opt = 'X'.
+
+    CALL METHOD go_grid_9400->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layo_9400
+      CHANGING
+        it_outtab       = gt_log_9400
+        it_fieldcatalog = gt_fcat_9400.
+  ELSE.
+    CALL METHOD go_grid_9400->refresh_table_display.
+  ENDIF.
 ENDFORM.
