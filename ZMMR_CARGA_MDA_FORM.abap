@@ -106,8 +106,6 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
         lv_id_linea_ini TYPE ztmm_log_mda-id_linea,
         lv_name_fich    TYPE string,
         lv_prov_up      TYPE string,
-        lv_prov_int     TYPE ztmm_cargas_mda-proveedor,
-        lv_mat_int      TYPE ztmm_cargas_mda-material,
         lv_msg          TYPE string,
         lv_tabix_txt    TYPE c LENGTH 10.
 
@@ -182,29 +180,11 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
     PERFORM get_next_number USING gc_obj_linea CHANGING lv_id_linea.
 
     CLEAR ls_carga.
-    CLEAR: lv_prov_int, lv_mat_int.
-
-    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
-      EXPORTING
-        input  = lv_prov
-      IMPORTING
-        output = lv_prov_int.
-
-    CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
-      EXPORTING
-        input  = lv_mat
-      IMPORTING
-        output = lv_mat_int
-      EXCEPTIONS
-        OTHERS = 1.
-    IF sy-subrc <> 0.
-      lv_mat_int = lv_mat.
-    ENDIF.
 
     ls_carga-id_carga      = iv_id_carga.
     ls_carga-id_linea      = lv_id_linea.
-    ls_carga-proveedor     = lv_prov_int.
-    ls_carga-material      = lv_mat_int.
+    ls_carga-proveedor     = lv_prov.
+    ls_carga-material      = lv_mat.
     ls_carga-cantidad      = lv_qty.
     ls_carga-unidad        = gc_unidad.
     ls_carga-fecha_doc     = lv_date_int.
