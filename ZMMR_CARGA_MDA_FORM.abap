@@ -468,10 +468,9 @@ FORM bal_save.
 ENDFORM.
 
 FORM display_slg_log.
-  " Asegura persistencia en BD antes de abrir SLG1
+  " Guarda y abre SLG1 siempre, sin lógica adicional
   PERFORM bal_save.
   COMMIT WORK AND WAIT.
-  MESSAGE 'Abriendo SLG1. Filtra por objeto ZMML_MDA y subobjeto PROCESO' TYPE 'S'.
   CALL TRANSACTION 'SLG1'.
 ENDFORM.
 
