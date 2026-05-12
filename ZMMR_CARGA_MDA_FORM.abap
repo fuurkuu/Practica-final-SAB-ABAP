@@ -1836,6 +1836,10 @@ FORM send_mail_csv_9300.
     ENDIF.
   ENDLOOP.
 
+  IF lv_default_mail IS INITIAL.
+    MESSAGE 'No hay email maestro. Introduce destinatario manualmente en el popup' TYPE 'S'.
+  ENDIF.
+
   PERFORM popup_mail_receivers_9300 USING lv_default_mail CHANGING lt_receivers lv_cancel.
   IF lv_cancel = 'X' OR lt_receivers IS INITIAL.
     RETURN.
