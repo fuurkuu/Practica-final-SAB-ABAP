@@ -30,7 +30,7 @@ DATA: gt_raw      TYPE STANDARD TABLE OF ty_raw_line WITH DEFAULT KEY,
 
 DATA: gv_bal_log_handle TYPE balloghndl,
       gv_bal_extnumber  TYPE balnrext,
-      gt_bal_log_handle TYPE STANDARD TABLE OF balloghndl WITH DEFAULT KEY.
+      gt_bal_log_handle TYPE bal_t_logh.
 
 TYPES: BEGIN OF ty_gen,
          estado     TYPE icon_d,

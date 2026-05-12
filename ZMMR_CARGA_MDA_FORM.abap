@@ -398,7 +398,7 @@ FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
 
   IF sy-subrc = 0 AND gv_bal_log_handle IS NOT INITIAL.
     gv_bal_extnumber = lv_extnumber.
-    APPEND gv_bal_log_handle TO gt_bal_log_handle.
+    INSERT gv_bal_log_handle INTO TABLE gt_bal_log_handle.
   ENDIF.
 ENDFORM.
 
@@ -469,6 +469,7 @@ ENDFORM.
 
 FORM display_slg_log.
   DATA ls_profile TYPE bal_s_prof.
+  DATA lt_log_handle_dsp TYPE STANDARD TABLE OF balloghndl WITH DEFAULT KEY.
 
   IF gt_bal_log_handle IS INITIAL.
     MESSAGE 'No hay logs SLG en memoria. Abriendo SLG1' TYPE 'S'.
@@ -486,11 +487,13 @@ FORM display_slg_log.
     EXCEPTIONS
       OTHERS              = 1.
 
+  lt_log_handle_dsp = gt_bal_log_handle.
+
   CALL FUNCTION 'BAL_DSP_LOG_DISPLAY'
     EXPORTING
       i_s_display_profile = ls_profile
     TABLES
-      i_t_log_handle      = gt_bal_log_handle
+      i_t_log_handle      = lt_log_handle_dsp
     EXCEPTIONS
       OTHERS              = 1.
 ENDFORM.
