@@ -1301,7 +1301,7 @@ FORM get_data_9300.
     SORT lt_mail_map BY lifnr flgdefault DESCENDING.
     DELETE ADJACENT DUPLICATES FROM lt_mail_map COMPARING lifnr.
 
-    SELECT h~ebeln
+    SELECT h~ebeln,
            ad~smtp_addr
       INTO TABLE @lt_po_mail
       FROM ekko AS h
@@ -1833,7 +1833,7 @@ FORM send_mail_csv_9300.
         lv_log_msg       TYPE string,
         lv_id_carga_log  TYPE ztmm_cargas_mda-id_carga,
         lv_id_linea_log  TYPE ztmm_log_mda-id_linea,
-        lv_bom_utf8      TYPE xstring VALUE X'EFBBBF'.
+        lv_bom_utf8(3)   TYPE x VALUE 'EFBBBF'.
 
   DATA: lt_receivers     TYPE tt_mail_recipients,
         ls_receiver      TYPE adr6-smtp_addr,
