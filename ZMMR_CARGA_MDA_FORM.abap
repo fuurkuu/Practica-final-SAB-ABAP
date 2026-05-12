@@ -468,33 +468,11 @@ FORM bal_save.
 ENDFORM.
 
 FORM display_slg_log.
-  DATA ls_profile TYPE bal_s_prof.
-  DATA lt_log_handle_dsp TYPE STANDARD TABLE OF balloghndl WITH DEFAULT KEY.
-
-  IF gt_bal_log_handle IS INITIAL.
-    MESSAGE 'No hay logs SLG en memoria. Abriendo SLG1' TYPE 'S'.
-    CALL TRANSACTION 'SLG1'.
-    RETURN.
-  ENDIF.
-
-  " Asegura persistencia en BD antes de visualizar/buscar en SLG1
+  " Asegura persistencia en BD antes de abrir SLG1
   PERFORM bal_save.
   COMMIT WORK AND WAIT.
-
-  CALL FUNCTION 'BAL_DSP_PROFILE_STANDARD_GET'
-    IMPORTING
-      e_s_display_profile = ls_profile
-    EXCEPTIONS
-      OTHERS              = 1.
-
-  lt_log_handle_dsp = gt_bal_log_handle.
-
-  CALL FUNCTION 'BAL_DSP_LOG_DISPLAY'
-    EXPORTING
-      i_s_display_profile = ls_profile
-      i_t_log_handle      = lt_log_handle_dsp
-    EXCEPTIONS
-      OTHERS              = 1.
+  MESSAGE 'Abriendo SLG1. Filtra por objeto ZMML_MDA y subobjeto PROCESO' TYPE 'S'.
+  CALL TRANSACTION 'SLG1'.
 ENDFORM.
 
 FORM get_file_name USING iv_full_path TYPE rlgrap-filename
