@@ -2040,34 +2040,15 @@ FORM popup_mail_receivers_9300 USING iv_default_mail TYPE adr6-smtp_addr
   ls_field-value     = iv_default_mail.
   APPEND ls_field TO lt_fields.
 
-  CLEAR ls_field.
-  ls_field-tabname   = 'ADR6'.
-  ls_field-fieldname = 'SMTP_ADDR'.
-  APPEND ls_field TO lt_fields.
-
-  CLEAR ls_field.
-  ls_field-tabname   = 'ADR6'.
-  ls_field-fieldname = 'SMTP_ADDR'.
-  APPEND ls_field TO lt_fields.
-
-  CLEAR ls_field.
-  ls_field-tabname   = 'ADR6'.
-  ls_field-fieldname = 'SMTP_ADDR'.
-  APPEND ls_field TO lt_fields.
-
-  CLEAR ls_field.
-  ls_field-tabname   = 'ADR6'.
-  ls_field-fieldname = 'SMTP_ADDR'.
-  APPEND ls_field TO lt_fields.
-
   CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      popup_title = 'Destinatarios correo (añadir/quitar emails)'
+      popup_title = 'Destinatarios (separar varios con ; o ,)'
     TABLES
       fields      = lt_fields
     EXCEPTIONS
       OTHERS      = 1.
   IF sy-subrc <> 0.
+    MESSAGE 'No se pudo abrir popup de destinatarios' TYPE 'S' DISPLAY LIKE 'E'.
     cv_cancel = 'X'.
     RETURN.
   ENDIF.
