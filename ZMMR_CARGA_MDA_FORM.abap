@@ -1078,10 +1078,6 @@ FORM get_data_9300.
            smtp_addr TYPE adr6-smtp_addr,
            flgdefault TYPE adr6-flgdefault,
          END OF ty_mail_map.
-  TYPES: BEGIN OF ty_lfa1_mail,
-           lifnr TYPE lifnr,
-           intad TYPE lfa1-intad,
-         END OF ty_lfa1_mail.
   TYPES: BEGIN OF ty_po_mail,
            ebeln     TYPE ebeln,
            smtp_addr TYPE adr6-smtp_addr,
@@ -1100,10 +1096,8 @@ FORM get_data_9300.
         lv_ebeln     TYPE ebeln,
         lv_vendor_key TYPE lifnr,
         ls_mail_map  TYPE ty_mail_map,
-        ls_lfa1_mail TYPE ty_lfa1_mail,
         ls_po_mail   TYPE ty_po_mail.
   DATA lt_mail_map TYPE STANDARD TABLE OF ty_mail_map WITH DEFAULT KEY.
-  DATA lt_lfa1_mail TYPE STANDARD TABLE OF ty_lfa1_mail WITH DEFAULT KEY.
   DATA lt_po_mail TYPE STANDARD TABLE OF ty_po_mail WITH DEFAULT KEY.
 
   REFRESH gt_flow.
@@ -1183,7 +1177,6 @@ FORM get_data_9300.
       ON li~lifnr = i~lifnr.
 
   REFRESH lt_mail_map.
-  REFRESH lt_lfa1_mail.
   REFRESH lt_po_mail.
   IF gt_flow IS NOT INITIAL.
     SELECT
@@ -1200,14 +1193,6 @@ FORM get_data_9300.
 
     SORT lt_mail_map BY lifnr flgdefault DESCENDING.
     DELETE ADJACENT DUPLICATES FROM lt_mail_map COMPARING lifnr.
-
-    SELECT lifnr
-           intad
-      INTO TABLE lt_lfa1_mail
-      FROM lfa1
-      FOR ALL ENTRIES IN gt_flow
-      WHERE lifnr = gt_flow-lifnr
-        AND intad <> space.
 
     SELECT h~ebeln
            ad~smtp_addr
@@ -1261,12 +1246,6 @@ FORM get_data_9300.
         READ TABLE lt_mail_map INTO ls_mail_map WITH KEY lifnr = lv_lifnr.
         IF sy-subrc = 0.
           <fs_smtp_addr> = ls_mail_map-smtp_addr.
-        ELSE.
-          CLEAR ls_lfa1_mail.
-          READ TABLE lt_lfa1_mail INTO ls_lfa1_mail WITH KEY lifnr = lv_lifnr.
-          IF sy-subrc = 0.
-            <fs_smtp_addr> = ls_lfa1_mail-intad.
-          ENDIF.
         ENDIF.
       ENDIF.
     ENDIF.
