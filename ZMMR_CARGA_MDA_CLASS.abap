@@ -38,6 +38,9 @@ CLASS lcl_evt_9300 DEFINITION.
 ENDCLASS.
 
 CLASS lcl_util IMPLEMENTATION.
+  "----------------------------------------------------------------------
+  " Metodo to_lower: Normaliza texto a minusculas para comparaciones y parsing seguro.
+  "----------------------------------------------------------------------
   METHOD to_lower.
     rv_text = iv_text.
     TRANSLATE rv_text TO LOWER CASE.
@@ -45,6 +48,9 @@ CLASS lcl_util IMPLEMENTATION.
 ENDCLASS.
 
 CLASS lcl_evt_9200 IMPLEMENTATION.
+  "----------------------------------------------------------------------
+  " Metodo handle_toolbar: Construye botones custom del toolbar ALV segun contexto de pantalla.
+  "----------------------------------------------------------------------
   METHOD handle_toolbar.
     DATA ls_btn TYPE stb_button.
 
@@ -71,8 +77,8 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
     CLEAR ls_btn.
     ls_btn-function  = 'ZCLOSE'.
     ls_btn-icon      = icon_locked.
-    ls_btn-quickinfo = 'Cerrar edición'.
-    ls_btn-text      = 'Cerrar edición'.
+    ls_btn-quickinfo = 'Cerrar edicion'.
+    ls_btn-text      = 'Cerrar edicion'.
     ls_btn-disabled  = space.
     APPEND ls_btn TO e_object->mt_toolbar.
 
@@ -89,6 +95,9 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
     APPEND ls_btn TO e_object->mt_toolbar.
   ENDMETHOD.
 
+  "----------------------------------------------------------------------
+  " Metodo handle_user_command: Procesa comandos de toolbar y doble click estandar (&IC1).
+  "----------------------------------------------------------------------
   METHOD handle_user_command.
     DATA: ls_row_id TYPE lvc_s_row,
           ls_col_id TYPE lvc_s_col,
@@ -135,6 +144,9 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
+  "----------------------------------------------------------------------
+  " Metodo handle_double_click: Procesa doble click directo del ALV para navegacion contextual.
+  "----------------------------------------------------------------------
   METHOD handle_double_click.
     DATA ls_gen TYPE ty_gen.
 
@@ -155,6 +167,9 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
+  "----------------------------------------------------------------------
+  " Metodo handle_data_changed: Valida restricciones de edicion sobre celdas modificadas.
+  "----------------------------------------------------------------------
   METHOD handle_data_changed.
     DATA: ls_mod  TYPE lvc_s_modi,
           ls_lock TYPE ty_lock,
@@ -167,7 +182,7 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
       ENDIF.
 
       IF ls_gen-pedido_gen = 'X'.
-        MESSAGE 'La línea ya tiene pedido generado y no es editable' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'La linea ya tiene pedido generado y no es editable' TYPE 'S' DISPLAY LIKE 'E'.
         CONTINUE.
       ENDIF.
 
@@ -182,6 +197,9 @@ CLASS lcl_evt_9200 IMPLEMENTATION.
 ENDCLASS.
 
 CLASS lcl_evt_9300 IMPLEMENTATION.
+  "----------------------------------------------------------------------
+  " Metodo handle_toolbar: Construye botones custom del toolbar ALV segun contexto de pantalla.
+  "----------------------------------------------------------------------
   METHOD handle_toolbar.
     DATA ls_btn TYPE stb_button.
 
@@ -222,6 +240,9 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
     APPEND ls_btn TO e_object->mt_toolbar.
   ENDMETHOD.
 
+  "----------------------------------------------------------------------
+  " Metodo handle_user_command: Procesa comandos de toolbar y doble click estandar (&IC1).
+  "----------------------------------------------------------------------
   METHOD handle_user_command.
     DATA: ls_row_id TYPE lvc_s_row,
           ls_col_id TYPE lvc_s_col,
@@ -268,6 +289,9 @@ CLASS lcl_evt_9300 IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
+  "----------------------------------------------------------------------
+  " Metodo handle_double_click: Procesa doble click directo del ALV para navegacion contextual.
+  "----------------------------------------------------------------------
   METHOD handle_double_click.
     DATA ls_flow TYPE zemm_flujo_mda.
 

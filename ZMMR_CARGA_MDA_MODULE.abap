@@ -1,6 +1,10 @@
 *&---------------------------------------------------------------------*
 *& Include          ZMMR_CARGA_MDA_MODULE
 *&---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* MODULE status_9000
+* Proposito: PBO de pantalla principal: status/titulo e inicializacion de subscreen default.
+*----------------------------------------------------------------------*
 MODULE status_9000 OUTPUT.
   SET PF-STATUS 'STATUS'.
   SET TITLEBAR  'TITLE'.
@@ -10,6 +14,10 @@ MODULE status_9000 OUTPUT.
   ENDIF.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE user_command_9000
+* Proposito: PAI de menu principal: navegacion entre dynpros y acciones globales.
+*----------------------------------------------------------------------*
 MODULE user_command_9000 INPUT.
   save_ok = ok_code.
   CLEAR ok_code.
@@ -39,9 +47,17 @@ MODULE user_command_9000 INPUT.
   ENDCASE.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE status_9100
+* Proposito: PBO de pantalla de carga de archivo (reservado para extensiones futuras).
+*----------------------------------------------------------------------*
 MODULE status_9100 OUTPUT.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE user_command_9100
+* Proposito: PAI de carga: F4 archivo y ejecucion de proceso RUN.
+*----------------------------------------------------------------------*
 MODULE user_command_9100 INPUT.
   save_ok = ok_code.
 
@@ -60,23 +76,47 @@ MODULE user_command_9100 INPUT.
   ENDCASE.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pbo_9200
+* Proposito: PBO de generador: inicializa o refresca ALV 9200.
+*----------------------------------------------------------------------*
 MODULE pbo_9200 OUTPUT.
   PERFORM alv_9200_init.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pai_9200
+* Proposito: PAI de generador: punto de extension para comandos de dynpro 9200.
+*----------------------------------------------------------------------*
 MODULE pai_9200 INPUT.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pbo_9300
+* Proposito: PBO de flujo: inicializa o refresca ALV 9300.
+*----------------------------------------------------------------------*
 MODULE pbo_9300 OUTPUT.
   PERFORM alv_9300_init.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pai_9300
+* Proposito: PAI de flujo: punto de extension para comandos de dynpro 9300.
+*----------------------------------------------------------------------*
 MODULE pai_9300 INPUT.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pbo_9400
+* Proposito: PBO de log: inicializa o refresca ALV 9400.
+*----------------------------------------------------------------------*
 MODULE pbo_9400 OUTPUT.
   PERFORM alv_9400_init.
 ENDMODULE.
 
+*----------------------------------------------------------------------*
+* MODULE pai_9400
+* Proposito: PAI de log: punto de extension para comandos de dynpro 9400.
+*----------------------------------------------------------------------*
 MODULE pai_9400 INPUT.
 ENDMODULE.

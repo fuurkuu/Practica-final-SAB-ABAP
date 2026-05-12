@@ -5,6 +5,10 @@
 *---------------------------------------------------------------------*
 * GLOBAL - reutilizable entre dynpros
 *---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* FORM run
+* Proposito: Orquesta la carga completa: validacion, subida, numeracion, procesamiento y log final.
+*----------------------------------------------------------------------*
 FORM run USING iv_file TYPE rlgrap-filename.
   DATA: lv_msg          TYPE string,
         lv_ok_txt       TYPE c LENGTH 20,
@@ -34,6 +38,10 @@ FORM run USING iv_file TYPE rlgrap-filename.
   MESSAGE lv_msg TYPE 'S'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM f4_file
+* Proposito: Abre dialogo F4 para seleccionar el archivo TXT de carga.
+*----------------------------------------------------------------------*
 FORM f4_file CHANGING cv_file TYPE rlgrap-filename.
   DATA: lt_filetab TYPE filetable,
         ls_file    TYPE file_table,
@@ -59,6 +67,10 @@ FORM f4_file CHANGING cv_file TYPE rlgrap-filename.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM validate_file
+* Proposito: Valida que se haya informado una ruta de archivo coherente para la carga.
+*----------------------------------------------------------------------*
 FORM validate_file USING iv_file TYPE rlgrap-filename.
   DATA: lv_file_str TYPE string,
         lv_lower    TYPE string.
@@ -71,10 +83,14 @@ FORM validate_file USING iv_file TYPE rlgrap-filename.
   lv_lower    = lcl_util=>to_lower( lv_file_str ).
 
   IF lv_lower NP '*.txt'.
-    MESSAGE e398(00) WITH 'El fichero debe tener extensión .TXT'.
+    MESSAGE e398(00) WITH 'El fichero debe tener extension .TXT'.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM upload_file
+* Proposito: Sube el contenido del archivo local a memoria interna (GT_RAW).
+*----------------------------------------------------------------------*
 FORM upload_file USING iv_file TYPE rlgrap-filename.
   DATA lv_filename TYPE string.
 
@@ -91,10 +107,14 @@ FORM upload_file USING iv_file TYPE rlgrap-filename.
       OTHERS   = 1.
 
   IF sy-subrc <> 0 OR gt_raw IS INITIAL.
-    MESSAGE e398(00) WITH 'Error leyendo fichero o fichero vacío'.
+    MESSAGE e398(00) WITH 'Error leyendo fichero o fichero vacio'.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM process_lines
+* Proposito: Parsea lineas del TXT, valida negocio y persiste registros en ZTMM_CARGAS_MDA.
+*----------------------------------------------------------------------*
 FORM process_lines USING iv_file TYPE rlgrap-filename
                          iv_id_carga TYPE ztmm_cargas_mda-id_carga
                    CHANGING cv_ok TYPE i
@@ -152,7 +172,7 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       cv_err = cv_err + 1.
       WRITE sy-tabix TO lv_tabix_txt.
       CONDENSE lv_tabix_txt.
-      CONCATENATE 'Línea' lv_tabix_txt ': formato inválido' INTO lv_msg SEPARATED BY space.
+      CONCATENATE 'Linea' lv_tabix_txt ': formato invalido' INTO lv_msg SEPARATED BY space.
       PERFORM add_log USING iv_id_carga lv_id_linea_ini 'E' lv_msg.
       CONTINUE.
     ENDIF.
@@ -163,7 +183,7 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
         cv_err = cv_err + 1.
         WRITE sy-tabix TO lv_tabix_txt.
         CONDENSE lv_tabix_txt.
-        CONCATENATE 'Línea' lv_tabix_txt ': cantidad inválida' INTO lv_msg SEPARATED BY space.
+        CONCATENATE 'Linea' lv_tabix_txt ': cantidad invalida' INTO lv_msg SEPARATED BY space.
         PERFORM add_log USING iv_id_carga lv_id_linea_ini 'E' lv_msg.
         CONTINUE.
     ENDTRY.
@@ -181,7 +201,7 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       cv_err = cv_err + 1.
       WRITE sy-tabix TO lv_tabix_txt.
       CONDENSE lv_tabix_txt.
-      CONCATENATE 'Línea' lv_tabix_txt ': fecha inválida' INTO lv_msg SEPARATED BY space.
+      CONCATENATE 'Linea' lv_tabix_txt ': fecha invalida' INTO lv_msg SEPARATED BY space.
       PERFORM add_log USING iv_id_carga lv_id_linea_ini 'E' lv_msg.
       CONTINUE.
     ENDIF.
@@ -192,7 +212,7 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       cv_err = cv_err + 1.
       WRITE sy-tabix TO lv_tabix_txt.
       CONDENSE lv_tabix_txt.
-      CONCATENATE 'Línea' lv_tabix_txt ':' lv_val_msg INTO lv_msg SEPARATED BY space.
+      CONCATENATE 'Linea' lv_tabix_txt ':' lv_val_msg INTO lv_msg SEPARATED BY space.
       PERFORM add_log USING iv_id_carga lv_id_linea_ini 'E' lv_msg.
       CONTINUE.
     ENDIF.
@@ -221,12 +241,16 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
       cv_err = cv_err + 1.
       WRITE sy-tabix TO lv_tabix_txt.
       CONDENSE lv_tabix_txt.
-      CONCATENATE 'Línea' lv_tabix_txt ': error INSERT ZTMM_CARGAS_MDA' INTO lv_msg SEPARATED BY space.
+      CONCATENATE 'Linea' lv_tabix_txt ': error INSERT ZTMM_CARGAS_MDA' INTO lv_msg SEPARATED BY space.
       PERFORM add_log USING iv_id_carga lv_id_linea 'E' lv_msg.
     ENDIF.
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM validate_business_line
+* Proposito: Valida proveedor/material/configuracion e info record antes de insertar.
+*----------------------------------------------------------------------*
 FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
                                   iv_material  TYPE ztmm_cargas_mda-material
                             CHANGING cv_valid  TYPE c
@@ -291,7 +315,7 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
   ENDIF.
 
   IF sy-subrc <> 0.
-    cv_msg = 'no hay configuración activa en ZTMM_CFGPO_MDA'.
+    cv_msg = 'no hay configuracion activa en ZTMM_CFGPO_MDA'.
     RETURN.
   ENDIF.
 
@@ -302,7 +326,7 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
       WHERE lifnr = lv_lifnr_key
         AND ekorg = ls_cfg-ekorg.
     IF sy-subrc <> 0.
-      cv_msg = 'proveedor no extendido a EKORG de configuración'.
+      cv_msg = 'proveedor no extendido a EKORG de configuracion'.
       RETURN.
     ENDIF.
   ENDIF.
@@ -314,7 +338,7 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
       WHERE matnr = lv_matnr_key
         AND werks = ls_cfg-werks.
     IF sy-subrc <> 0.
-      cv_msg = 'material no extendido a WERKS de configuración'.
+      cv_msg = 'material no extendido a WERKS de configuracion'.
       RETURN.
     ENDIF.
   ENDIF.
@@ -338,6 +362,10 @@ FORM validate_business_line USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
   cv_valid = 'X'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_next_number
+* Proposito: Obtiene el siguiente numero de rango (SNRO) para carga/linea/log.
+*----------------------------------------------------------------------*
 FORM get_next_number USING iv_object TYPE inri-object
                      CHANGING cv_number TYPE any.
   DATA: lv_number    TYPE n LENGTH 10,
@@ -363,6 +391,10 @@ FORM get_next_number USING iv_object TYPE inri-object
   cv_number = lv_number.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM add_log
+* Proposito: Fachada de logging que centraliza el uso del Application Log (BAL).
+*----------------------------------------------------------------------*
 FORM add_log USING iv_id_carga TYPE ztmm_log_mda-id_carga
                    iv_id_linea TYPE ztmm_log_mda-id_linea
                    iv_nivel    TYPE ztmm_log_mda-nivel
@@ -370,6 +402,10 @@ FORM add_log USING iv_id_carga TYPE ztmm_log_mda-id_carga
   PERFORM bal_add_message USING iv_id_carga iv_id_linea iv_nivel iv_msg.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM bal_init
+* Proposito: Inicializa el log BAL para la corrida actual (objeto/subobjeto/extnumber).
+*----------------------------------------------------------------------*
 FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
   DATA ls_bal_log TYPE bal_s_log.
   DATA lv_extnumber TYPE balnrext.
@@ -406,6 +442,10 @@ FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM bal_add_message
+* Proposito: Agrega un mensaje al BAL con severidad y contexto de carga/linea.
+*----------------------------------------------------------------------*
 FORM bal_add_message USING iv_id_carga TYPE ztmm_log_mda-id_carga
                            iv_id_linea TYPE ztmm_log_mda-id_linea
                            iv_nivel    TYPE ztmm_log_mda-nivel
@@ -471,13 +511,21 @@ FORM bal_save.
       OTHERS         = 1.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM display_slg_log
+* Proposito: Abre SLG1 para consulta del Application Log del proceso.
+*----------------------------------------------------------------------*
 FORM display_slg_log.
-  " Guarda y abre SLG1 siempre, sin lógica adicional
+  " Guarda y abre SLG1 siempre, sin logica adicional
   PERFORM bal_save.
   COMMIT WORK AND WAIT.
   CALL TRANSACTION 'SLG1'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_file_name
+* Proposito: Extrae el nombre de archivo desde la ruta completa seleccionada.
+*----------------------------------------------------------------------*
 FORM get_file_name USING iv_full_path TYPE rlgrap-filename
                    CHANGING cv_name TYPE string.
   DATA: lv_aux    TYPE string,

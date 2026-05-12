@@ -5,6 +5,10 @@
 *---------------------------------------------------------------------*
 * 9400 - Log del proceso
 *---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* FORM get_data_9400
+* Proposito: Carga datos de log (por carga o global) para visualizacion.
+*----------------------------------------------------------------------*
 FORM get_data_9400.
   REFRESH gt_log_9400.
 
@@ -24,6 +28,10 @@ FORM get_data_9400.
   SORT gt_log_9400 BY log_id DESCENDING.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM build_fcat_9400
+* Proposito: Construye catalogo de campos del ALV de log (dynpro 9400).
+*----------------------------------------------------------------------*
 FORM build_fcat_9400.
   REFRESH gt_fcat_9400.
 
@@ -36,10 +44,14 @@ FORM build_fcat_9400.
       OTHERS           = 1.
 
   IF sy-subrc <> 0 OR gt_fcat_9400 IS INITIAL.
-    MESSAGE 'No se pudo construir catálogo de campos 9400' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'No se pudo construir catalogo de campos 9400' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM alv_9400_init
+* Proposito: Inicializa/actualiza ALV de log en dynpro 9400.
+*----------------------------------------------------------------------*
 FORM alv_9400_init.
   PERFORM get_data_9400.
 

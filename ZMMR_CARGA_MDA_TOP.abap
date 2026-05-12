@@ -1,6 +1,10 @@
 *&---------------------------------------------------------------------*
 *& Include          ZMMR_CARGA_MDA_TOP
 *&---------------------------------------------------------------------*
+* Declaraciones globales:
+* - Tipos y constantes de negocio.
+* - Estructuras auxiliares para ALV y bloqueos.
+* - Variables globales compartidas entre dynpros e includes.
 TYPE-POOLS: icon, lvc.
 
 CLASS lcl_evt_9200 DEFINITION DEFERRED.

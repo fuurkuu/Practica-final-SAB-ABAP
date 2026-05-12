@@ -5,6 +5,10 @@
 *---------------------------------------------------------------------*
 * 9200 - ALV Generador
 *---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* FORM alv_9200_init
+* Proposito: Inicializa ALV 9200 (contenedor, eventos, catalogo y primer display).
+*----------------------------------------------------------------------*
 FORM alv_9200_init.
   DATA ls_stable TYPE lvc_s_stbl.
 
@@ -54,6 +58,10 @@ FORM alv_9200_init.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM set_row_style
+* Proposito: Configura estilo de celda editable/no editable por fila en ALV 9200.
+*----------------------------------------------------------------------*
 FORM set_row_style USING iv_edit TYPE c
                    CHANGING cs_gen TYPE ty_gen.
   DATA: ls_styl  TYPE lvc_s_styl,
@@ -83,6 +91,10 @@ FORM set_row_style USING iv_edit TYPE c
   INSERT ls_styl INTO TABLE cs_gen-celltab.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_data_generador
+* Proposito: Carga dataset de generador y sincroniza comentario/estado visual.
+*----------------------------------------------------------------------*
 FORM get_data_generador.
   DATA lv_comment TYPE ztmm_potxt_mda-comentario.
 
@@ -114,12 +126,16 @@ FORM get_data_generador.
   gt_gen_old = gt_gen.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM build_fcat_9200
+* Proposito: Construye catalogo de campos para ALV de generacion (dynpro 9200).
+*----------------------------------------------------------------------*
 FORM build_fcat_9200.
   REFRESH gt_fcat_9200.
 
   PERFORM add_fcat USING 'ESTADO'     'Estado'     ''  ''.
   PERFORM add_fcat USING 'ID_CARGA'   'ID carga'   ''  ''.
-  PERFORM add_fcat USING 'ID_LINEA'   'ID línea'   ''  ''.
+  PERFORM add_fcat USING 'ID_LINEA'   'ID linea'   ''  ''.
   PERFORM add_fcat USING 'PROVEEDOR'  'Proveedor'  ''  ''.
   PERFORM add_fcat USING 'MATERIAL'   'Material'   ''  ''.
   PERFORM add_fcat USING 'CANTIDAD'   'Cantidad'   'X' ''.
@@ -131,6 +147,10 @@ FORM build_fcat_9200.
   PERFORM add_fcat USING 'COMENTARIO' 'Comentario' 'X' ''.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM handle_ic1_9200
+* Proposito: Gestiona comando estandar &IC1 para navegacion desde ALV 9200.
+*----------------------------------------------------------------------*
 FORM handle_ic1_9200.
   DATA: ls_row_id TYPE lvc_s_row,
         ls_col_id TYPE lvc_s_col,
@@ -166,6 +186,10 @@ FORM handle_ic1_9200.
   ENDCASE.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM add_fcat
+* Proposito: Helper para alta de columnas en catalogo LVC (texto, edicion, hotspot).
+*----------------------------------------------------------------------*
 FORM add_fcat USING iv_field TYPE lvc_fname
                     iv_text  TYPE char40
                     iv_edit  TYPE c
@@ -186,6 +210,10 @@ FORM add_fcat USING iv_field TYPE lvc_fname
   APPEND ls_fcat TO gt_fcat_9200.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_selected_gen_rows
+* Proposito: Devuelve filas actualmente seleccionadas por el usuario en ALV 9200.
+*----------------------------------------------------------------------*
 FORM get_selected_gen_rows CHANGING ct_sel TYPE tt_gen.
   DATA: lt_rows TYPE lvc_t_row,
         ls_row  TYPE lvc_s_row,
@@ -209,6 +237,10 @@ FORM get_selected_gen_rows CHANGING ct_sel TYPE tt_gen.
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM has_pending_changes
+* Proposito: Detecta cambios pendientes entre snapshot original y datos editados.
+*----------------------------------------------------------------------*
 FORM has_pending_changes CHANGING cv_pending TYPE c.
   DATA: ls_new TYPE ty_gen,
         ls_old TYPE ty_gen.
@@ -232,6 +264,10 @@ FORM has_pending_changes CHANGING cv_pending TYPE c.
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM open_edit_mode
+* Proposito: Bloquea filas seleccionadas y habilita edicion controlada en ALV 9200.
+*----------------------------------------------------------------------*
 FORM open_edit_mode.
   DATA: lt_sel   TYPE tt_gen,
         ls_gen   TYPE ty_gen,
@@ -245,7 +281,7 @@ FORM open_edit_mode.
   PERFORM get_selected_gen_rows CHANGING lt_sel.
 
   IF lt_sel IS INITIAL.
-    MESSAGE 'Selecciona filas (selector estándar izquierda)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Selecciona filas (selector estandar izquierda)' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -298,6 +334,10 @@ FORM open_edit_mode.
   CALL METHOD go_grid_9200->refresh_table_display.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM close_edit_mode
+* Proposito: Desbloquea filas y retorna ALV 9200 a modo solo lectura.
+*----------------------------------------------------------------------*
 FORM close_edit_mode.
   DATA ls_lock TYPE ty_lock.
 
@@ -322,6 +362,10 @@ FORM close_edit_mode.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM save_gen_changes
+* Proposito: Guarda cambios editados (cantidad/fecha/comentario) y refresca ALV.
+*----------------------------------------------------------------------*
 FORM save_gen_changes.
   DATA: ls_new  TYPE ty_gen,
         ls_old  TYPE ty_gen,
@@ -379,6 +423,10 @@ FORM save_gen_changes.
   MESSAGE 'Cambios guardados' TYPE 'S'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM upsert_comment
+* Proposito: Inserta o actualiza comentario por linea en ZTMM_POTXT_MDA.
+*----------------------------------------------------------------------*
 FORM upsert_comment USING iv_id_carga TYPE ztmm_potxt_mda-id_carga
                           iv_id_linea TYPE ztmm_potxt_mda-id_linea
                           iv_comment  TYPE ztmm_potxt_mda-comentario.
@@ -412,6 +460,10 @@ FORM upsert_comment USING iv_id_carga TYPE ztmm_potxt_mda-id_carga
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_cfg_po
+* Proposito: Obtiene configuracion activa de compras desde ZTMM_CFGPO_MDA.
+*----------------------------------------------------------------------*
 FORM get_cfg_po CHANGING cs_cfg TYPE ztmm_cfgpo_mda.
   CLEAR cs_cfg.
 
@@ -429,10 +481,14 @@ FORM get_cfg_po CHANGING cs_cfg TYPE ztmm_cfgpo_mda.
   ENDIF.
 
   IF sy-subrc <> 0.
-    MESSAGE 'No existe configuración activa en ZTMM_CFGPO_MDA' TYPE 'E'.
+    MESSAGE 'No existe configuracion activa en ZTMM_CFGPO_MDA' TYPE 'E'.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM generate_po_selected
+* Proposito: Agrupa seleccion por reglas de negocio y dispara creacion de POs.
+*----------------------------------------------------------------------*
 FORM generate_po_selected.
   DATA: lt_sel       TYPE tt_gen,
         lt_group     TYPE tt_gen,
@@ -460,14 +516,14 @@ FORM generate_po_selected.
 
   PERFORM get_selected_gen_rows CHANGING lt_sel.
   IF lt_sel IS INITIAL.
-    MESSAGE 'Selecciona filas (selector estándar izquierda)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Selecciona filas (selector estandar izquierda)' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   DELETE lt_sel WHERE pedido_gen = 'X'.
 
   IF lt_sel IS INITIAL.
-    MESSAGE 'Todas las filas seleccionadas ya están generadas' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Todas las filas seleccionadas ya estan generadas' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -528,7 +584,7 @@ FORM generate_po_selected.
   CONDENSE lv_ok_txt.
   CONDENSE lv_err_txt.
 
-  CONCATENATE 'Generación grupos OK=' lv_ok_txt 'ERR=' lv_err_txt
+  CONCATENATE 'Generacion grupos OK=' lv_ok_txt 'ERR=' lv_err_txt
     INTO lv_msg SEPARATED BY space.
 
   IF lv_err > 0.
@@ -538,6 +594,10 @@ FORM generate_po_selected.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM create_po_group
+* Proposito: Construye payload BAPI_PO_CREATE1, crea PO y actualiza tablas propias.
+*----------------------------------------------------------------------*
 FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
                            iv_fecha_doc TYPE ztmm_cargas_mda-fecha_doc
                            iv_comment   TYPE ztmm_potxt_mda-comentario
@@ -703,7 +763,7 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
     ENDLOOP.
 
     IF lv_err_msg IS INITIAL.
-      lv_err_msg = 'BAPI_PO_CREATE1 devolvió error sin detalle'.
+      lv_err_msg = 'BAPI_PO_CREATE1 devolvio error sin detalle'.
     ENDIF.
 
     CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
@@ -720,7 +780,7 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
   LOOP AT ct_group INTO ls_line.
     READ TABLE lt_agg INTO ls_agg WITH KEY material = ls_line-material.
     IF sy-subrc <> 0.
-      PERFORM add_log USING ls_line-id_carga ls_line-id_linea 'E' 'No se encontró material agregado'.
+      PERFORM add_log USING ls_line-id_carga ls_line-id_linea 'E' 'No se encontro material agregado'.
       CONTINUE.
     ENDIF.
 
@@ -742,7 +802,7 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
   ENDLOOP.
 
   IF lv_upd = 0.
-    PERFORM add_log USING lv_idcar lv_idlin 'E' 'Pedido creado pero sin líneas actualizadas'.
+    PERFORM add_log USING lv_idcar lv_idlin 'E' 'Pedido creado pero sin lineas actualizadas'.
     RETURN.
   ENDIF.
 
@@ -758,6 +818,10 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
   cv_group_ok = 'X'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM save_po_text
+* Proposito: Guarda texto de posicion de pedido (objeto EKPO, ID F01).
+*----------------------------------------------------------------------*
 FORM save_po_text USING iv_ebeln TYPE ebeln
                         iv_ebelp TYPE ebelp
                         iv_text  TYPE ztmm_potxt_mda-comentario.
@@ -788,11 +852,19 @@ FORM save_po_text USING iv_ebeln TYPE ebeln
       OTHERS          = 1.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM nav_me23n
+* Proposito: Navega al pedido de compras en ME23N usando parameter ID BES.
+*----------------------------------------------------------------------*
 FORM nav_me23n USING iv_ebeln TYPE ebeln.
   SET PARAMETER ID 'BES' FIELD iv_ebeln.
   CALL TRANSACTION 'ME23N' AND SKIP FIRST SCREEN.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM nav_mm03_purch
+* Proposito: Navega a MM03 en vista de compras con centro configurable.
+*----------------------------------------------------------------------*
 FORM nav_mm03_purch USING iv_matnr TYPE matnr.
   DATA: ls_cfg TYPE ztmm_cfgpo_mda,
         lv_mxx TYPE c LENGTH 1.

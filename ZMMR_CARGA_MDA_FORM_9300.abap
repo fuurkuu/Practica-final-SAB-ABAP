@@ -5,6 +5,10 @@
 *---------------------------------------------------------------------*
 * 9300 - Flujo completo + correo
 *---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* FORM get_data_9300
+* Proposito: Construye dataset de flujo completo y estado de mail para ALV 9300.
+*----------------------------------------------------------------------*
 FORM get_data_9300.
   TYPES: BEGIN OF ty_mail_map,
            lifnr     TYPE lifnr,
@@ -220,6 +224,10 @@ FORM get_data_9300.
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM alv_9300_init
+* Proposito: Inicializa ALV 9300 con eventos, catalogo y carga inicial.
+*----------------------------------------------------------------------*
 FORM alv_9300_init.
   PERFORM get_data_9300.
 
@@ -258,6 +266,10 @@ FORM alv_9300_init.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM popup_filtros_9300
+* Proposito: Solicita filtros de busqueda para flujo completo (pedido/fechas/carga).
+*----------------------------------------------------------------------*
 FORM popup_filtros_9300.
   DATA: lt_fields TYPE TABLE OF sval,
         ls_field  TYPE sval.
@@ -314,6 +326,10 @@ FORM popup_filtros_9300.
   IF sy-subrc = 0. gv_f_id_carga = ls_field-value. ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM print_form_9300
+* Proposito: Genera, previsualiza o imprime Adobe Form del pedido seleccionado.
+*----------------------------------------------------------------------*
 FORM print_form_9300 USING iv_action TYPE c.
   DATA: ls_flow      TYPE zemm_flujo_mda,
         lt_sel       TYPE lvc_t_row,
@@ -432,6 +448,10 @@ FORM print_form_9300 USING iv_action TYPE c.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM build_fcat_9300
+* Proposito: Construye catalogo de campos para ALV de flujo (dynpro 9300).
+*----------------------------------------------------------------------*
 FORM build_fcat_9300.
   REFRESH gt_fcat_9300.
 
@@ -444,7 +464,7 @@ FORM build_fcat_9300.
       OTHERS           = 1.
 
   IF sy-subrc <> 0 OR gt_fcat_9300 IS INITIAL.
-    MESSAGE 'No se pudo construir catálogo de campos 9300' TYPE 'E'.
+    MESSAGE 'No se pudo construir catalogo de campos 9300' TYPE 'E'.
   ENDIF.
 
   LOOP AT gt_fcat_9300 ASSIGNING FIELD-SYMBOL(<fs_fcat>).
@@ -463,6 +483,10 @@ FORM build_fcat_9300.
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM handle_ic1_9300
+* Proposito: Gestiona comando estandar &IC1 para navegacion desde ALV 9300.
+*----------------------------------------------------------------------*
 FORM handle_ic1_9300.
   DATA: ls_row_id TYPE lvc_s_row,
         ls_col_id TYPE lvc_s_col,
@@ -498,6 +522,10 @@ FORM handle_ic1_9300.
   ENDCASE.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM show_bank_popup_9300
+* Proposito: Muestra popup ALV con datos bancarios del proveedor seleccionado.
+*----------------------------------------------------------------------*
 FORM show_bank_popup_9300.
   DATA: lt_rows    TYPE lvc_t_row,
         ls_row     TYPE lvc_s_row,
@@ -522,7 +550,7 @@ FORM show_bank_popup_9300.
 
   DESCRIBE TABLE lt_rows LINES lv_lines.
   IF lv_lines <> 1.
-    MESSAGE 'Selecciona un único registro' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Selecciona un unico registro' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -604,6 +632,10 @@ FORM show_bank_popup_9300.
   ENDTRY.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM send_mail_csv_9300
+* Proposito: Envia correo (CL_BCS) con CSV de la seleccion del flujo 9300.
+*----------------------------------------------------------------------*
 FORM send_mail_csv_9300.
   DATA: lt_rows          TYPE lvc_t_row,
         ls_row           TYPE lvc_s_row,
@@ -688,13 +720,13 @@ FORM send_mail_csv_9300.
   ENDLOOP.
 
   IF lt_orders IS INITIAL.
-    MESSAGE 'No hay pedidos válidos en la selección' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'No hay pedidos validos en la seleccion' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   PERFORM get_mail_flag_component_9300 CHANGING lv_mail_flag.
   IF lv_mail_flag IS INITIAL.
-    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL/MAIL_SENT en ZTMM_CARGAS_MDA (se enviará sin control de reenvío)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Falta campo MAIL_ENVIADO/ENVIADO_MAIL/MAIL_SENT en ZTMM_CARGAS_MDA (se enviara sin control de reenvio)' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 
   IF lv_mail_flag IS NOT INITIAL.
@@ -768,7 +800,7 @@ FORM send_mail_csv_9300.
     RETURN.
   ENDIF.
 
-  " BOM UTF-8 para que Excel interprete correctamente tildes y eñes
+  " BOM UTF-8 para que Excel interprete correctamente tildes y enes
   CONCATENATE lv_bom_utf8 lv_csv_xstring INTO lv_csv_xstring IN BYTE MODE.
 
   CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
@@ -828,7 +860,7 @@ FORM send_mail_csv_9300.
       MESSAGE 'Error creando documento de correo' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     CATCH cx_bcs.
-      MESSAGE 'Error técnico enviando correo' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE 'Error tecnico enviando correo' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
   ENDTRY.
 
@@ -853,6 +885,10 @@ FORM send_mail_csv_9300.
   MESSAGE 'Correo enviado (revisar SOST: en desarrollo puede quedar en espera)' TYPE 'S'.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_po_mail_9300
+* Proposito: Recupera email desde direccion asociada al pedido (EKKO-ADRNR).
+*----------------------------------------------------------------------*
 FORM get_po_mail_9300 USING iv_ebeln TYPE ebeln
                       CHANGING cv_mail TYPE adr6-smtp_addr.
   CLEAR cv_mail.
@@ -870,6 +906,10 @@ FORM get_po_mail_9300 USING iv_ebeln TYPE ebeln
       AND ad~smtp_addr <> @space.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_supplier_mail_9300
+* Proposito: Recupera email por proveedor desde maestro de direcciones.
+*----------------------------------------------------------------------*
 FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
                             CHANGING cv_mail TYPE adr6-smtp_addr.
   CLEAR cv_mail.
@@ -898,6 +938,10 @@ FORM get_supplier_mail_9300 USING iv_lifnr TYPE lifnr
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM popup_mail_receivers_9300
+* Proposito: Captura destinatarios por popup para envio de mail CSV.
+*----------------------------------------------------------------------*
 FORM popup_mail_receivers_9300 USING iv_default_mail TYPE adr6-smtp_addr
                                CHANGING ct_receivers TYPE tt_mail_recipients
                                         cv_cancel TYPE c.
@@ -937,11 +981,15 @@ FORM popup_mail_receivers_9300 USING iv_default_mail TYPE adr6-smtp_addr
   DELETE ADJACENT DUPLICATES FROM ct_receivers.
 
   IF ct_receivers IS INITIAL.
-    MESSAGE 'Debes indicar al menos un email válido' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Debes indicar al menos un email valido' TYPE 'S' DISPLAY LIKE 'E'.
     cv_cancel = 'X'.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM append_mail_tokens_9300
+* Proposito: Normaliza y separa multiples correos ingresados por delimitadores.
+*----------------------------------------------------------------------*
 FORM append_mail_tokens_9300 USING iv_mail_text TYPE adr6-smtp_addr
                              CHANGING ct_receivers TYPE tt_mail_recipients.
   DATA: lv_text      TYPE string,
@@ -973,6 +1021,10 @@ FORM append_mail_tokens_9300 USING iv_mail_text TYPE adr6-smtp_addr
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM is_valid_mail_9300
+* Proposito: Valida formato basico de correo para evitar envios invalidos.
+*----------------------------------------------------------------------*
 FORM is_valid_mail_9300 USING iv_mail TYPE adr6-smtp_addr
                         CHANGING cv_valid TYPE c.
   cv_valid = space.
@@ -981,6 +1033,10 @@ FORM is_valid_mail_9300 USING iv_mail TYPE adr6-smtp_addr
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM get_mail_flag_component_9300
+* Proposito: Detecta nombre tecnico del flag de mail enviado en estructura.
+*----------------------------------------------------------------------*
 FORM get_mail_flag_component_9300 CHANGING cv_component TYPE ty_fieldname30.
   DATA ls_carga TYPE ztmm_cargas_mda.
   FIELD-SYMBOLS <fs_mail> TYPE any.
@@ -1012,6 +1068,10 @@ FORM get_mail_flag_component_9300 CHANGING cv_component TYPE ty_fieldname30.
   ENDIF.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM is_mail_sent_for_ebeln_9300
+* Proposito: Verifica si el pedido ya fue marcado como enviado por mail.
+*----------------------------------------------------------------------*
 FORM is_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
                                        iv_mail_component TYPE ty_fieldname30
                                  CHANGING cv_sent TYPE c.
@@ -1036,6 +1096,10 @@ FORM is_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
   ENDLOOP.
 ENDFORM.
 
+*----------------------------------------------------------------------*
+* FORM mark_mail_sent_for_ebeln_9300
+* Proposito: Marca lineas de pedido como mail enviado tras envio exitoso.
+*----------------------------------------------------------------------*
 FORM mark_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
                                          iv_mail_component TYPE ty_fieldname30.
   DATA: lt_cargas TYPE STANDARD TABLE OF ztmm_cargas_mda WITH DEFAULT KEY,
