@@ -75,7 +75,7 @@ MODULE pai_9300 INPUT.
 ENDMODULE.
 
 MODULE pbo_9400 OUTPUT.
-  PERFORM alv_9400_init.
+  " Logging unificado por SLG1 (BTN4 -> display_slg_log).
 ENDMODULE.
 
 MODULE pai_9400 INPUT.

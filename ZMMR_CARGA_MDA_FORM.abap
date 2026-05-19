@@ -9,7 +9,7 @@ FORM run USING iv_file TYPE rlgrap-filename.
   DATA: lv_msg          TYPE string,
         lv_ok_txt       TYPE c LENGTH 20,
         lv_err_txt      TYPE c LENGTH 20,
-        lv_id_linea_ini TYPE ztmm_log_mda-id_linea.
+        lv_id_linea_ini TYPE ztmm_cargas_mda-id_linea.
 
   CLEAR: gv_ok, gv_err, lv_id_linea_ini.
   CLEAR gv_bal_log_handle.
@@ -110,7 +110,7 @@ FORM process_lines USING iv_file TYPE rlgrap-filename
         lv_qty          TYPE ztmm_cargas_mda-cantidad,
         lv_date_int     TYPE ztmm_cargas_mda-fecha_doc,
         lv_id_linea     TYPE ztmm_cargas_mda-id_linea,
-        lv_id_linea_ini TYPE ztmm_log_mda-id_linea,
+        lv_id_linea_ini TYPE ztmm_cargas_mda-id_linea,
         lv_name_fich    TYPE string,
         lv_prov_up      TYPE string,
         lv_valid_line   TYPE c,
@@ -363,14 +363,14 @@ FORM get_next_number USING iv_object TYPE inri-object
   cv_number = lv_number.
 ENDFORM.
 
-FORM add_log USING iv_id_carga TYPE ztmm_log_mda-id_carga
-                   iv_id_linea TYPE ztmm_log_mda-id_linea
-                   iv_nivel    TYPE ztmm_log_mda-nivel
+FORM add_log USING iv_id_carga TYPE ztmm_cargas_mda-id_carga
+                   iv_id_linea TYPE ztmm_cargas_mda-id_linea
+                   iv_nivel    TYPE symsgty
                    iv_msg      TYPE string.
   PERFORM bal_add_message USING iv_id_carga iv_id_linea iv_nivel iv_msg.
 ENDFORM.
 
-FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
+FORM bal_init USING iv_id_carga TYPE ztmm_cargas_mda-id_carga.
   DATA ls_bal_log TYPE bal_s_log.
   DATA lv_extnumber TYPE balnrext.
 
@@ -406,9 +406,9 @@ FORM bal_init USING iv_id_carga TYPE ztmm_log_mda-id_carga.
   ENDIF.
 ENDFORM.
 
-FORM bal_add_message USING iv_id_carga TYPE ztmm_log_mda-id_carga
-                           iv_id_linea TYPE ztmm_log_mda-id_linea
-                           iv_nivel    TYPE ztmm_log_mda-nivel
+FORM bal_add_message USING iv_id_carga TYPE ztmm_cargas_mda-id_carga
+                           iv_id_linea TYPE ztmm_cargas_mda-id_linea
+                           iv_nivel    TYPE symsgty
                            iv_msg      TYPE string.
   DATA: ls_bal_msg TYPE bal_s_msg,
         lv_msgty   TYPE symsgty,
@@ -1026,8 +1026,8 @@ FORM create_po_group USING iv_proveedor TYPE ztmm_cargas_mda-proveedor
         lt_return TYPE TABLE OF bapiret2.
 
   DATA: lv_msg   TYPE string,
-        lv_idcar TYPE ztmm_log_mda-id_carga,
-        lv_idlin TYPE ztmm_log_mda-id_linea.
+        lv_idcar TYPE ztmm_cargas_mda-id_carga,
+        lv_idlin TYPE ztmm_cargas_mda-id_linea.
 
   cv_group_ok = space.
 
@@ -1857,7 +1857,7 @@ FORM send_mail_csv_9300.
         lv_sent_to_all   TYPE c LENGTH 1,
         lv_log_msg       TYPE string,
         lv_id_carga_log  TYPE ztmm_cargas_mda-id_carga,
-        lv_id_linea_log  TYPE ztmm_log_mda-id_linea,
+        lv_id_linea_log  TYPE ztmm_cargas_mda-id_linea,
         lv_bom_utf8(3)   TYPE x VALUE 'EFBBBF'.
 
   DATA: lt_receivers     TYPE tt_mail_recipients,
@@ -2286,72 +2286,4 @@ FORM mark_mail_sent_for_ebeln_9300 USING iv_ebeln TYPE ebeln
       MODIFY ztmm_cargas_mda FROM ls_carga.
     ENDIF.
   ENDLOOP.
-ENDFORM.
-
-*---------------------------------------------------------------------*
-* 9400 - Log del proceso
-*---------------------------------------------------------------------*
-FORM get_data_9400.
-  REFRESH gt_log_9400.
-
-  IF gv_id_carga IS NOT INITIAL.
-    SELECT *
-      INTO TABLE gt_log_9400
-      FROM ztmm_log_mda
-      WHERE id_carga = gv_id_carga.
-  ENDIF.
-
-  IF gt_log_9400 IS INITIAL.
-    SELECT *
-      INTO TABLE gt_log_9400
-      FROM ztmm_log_mda.
-  ENDIF.
-
-  SORT gt_log_9400 BY log_id DESCENDING.
-ENDFORM.
-
-FORM build_fcat_9400.
-  REFRESH gt_fcat_9400.
-
-  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
-    EXPORTING
-      i_structure_name = 'ZTMM_LOG_MDA'
-    CHANGING
-      ct_fieldcat      = gt_fcat_9400
-    EXCEPTIONS
-      OTHERS           = 1.
-
-  IF sy-subrc <> 0 OR gt_fcat_9400 IS INITIAL.
-    MESSAGE 'No se pudo construir catálogo de campos 9400' TYPE 'S' DISPLAY LIKE 'E'.
-  ENDIF.
-ENDFORM.
-
-FORM alv_9400_init.
-  PERFORM get_data_9400.
-
-  IF go_cont_9400 IS INITIAL.
-    CREATE OBJECT go_cont_9400
-      EXPORTING
-        container_name = 'CC_ALV_9400'.
-
-    CREATE OBJECT go_grid_9400
-      EXPORTING
-        i_parent = go_cont_9400.
-
-    PERFORM build_fcat_9400.
-
-    CLEAR gs_layo_9400.
-    gs_layo_9400-sel_mode   = 'A'.
-    gs_layo_9400-zebra      = 'X'.
-    gs_layo_9400-cwidth_opt = 'X'.
-
-    CALL METHOD go_grid_9400->set_table_for_first_display
-      EXPORTING
-        is_layout       = gs_layo_9400
-      CHANGING
-        it_outtab       = gt_log_9400
-        it_fieldcatalog = gt_fcat_9400.
-  ELSE.
-    CALL METHOD go_grid_9400->refresh_table_display.
-  ENDIF.
 ENDFORM.
